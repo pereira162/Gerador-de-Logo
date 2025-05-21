@@ -3,8 +3,29 @@ import SVGTemplateSelector from './SVGTemplateSelector';
 import SVGPreview from './SVGPreview';
 import SVGExporter from './SVGExporter';
 import useLogoStore from '../store/LogoStore';
+import colorManager from '../services/ColorManager';
+import fontManager from '../services/FontManager';
 
 const LogoCreator = () => {
+  // Inicializar recursos ao montar o componente
+  useEffect(() => {
+    const initializeResources = async () => {
+      try {
+        // Inicializar o gerenciador de fontes
+        await fontManager.initialize();
+        console.log('Fontes carregadas com sucesso');
+        
+        // Inicializar o gerenciador de cores
+        const schemes = colorManager.getAvailableColorSchemes();
+        colorManager.setActiveColorScheme(schemes[0] || 'modern');
+        console.log('Esquemas de cores inicializados:', schemes);
+      } catch (error) {
+        console.error('Erro ao carregar recursos:', error);
+      }
+    };
+    
+    initializeResources();
+  }, []);
   const { currentProject, currentScreen, setScreen, selectElement, updateElement } = useLogoStore();
   const [colorPicker, setColorPicker] = useState({
     isOpen: false,

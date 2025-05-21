@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import colorManager from '../services/ColorManager';
+import fontManager from '../services/FontManager';
+import exportManager from '../services/ExportManager';
 import svgManager from '../services/SVGManager';
-import { availableSVGTemplates } from '../utils/SVGTemplates';
+import { getAllTemplates, loadTemplateContent } from '../utils/SVGTemplates';
 
 /**
  * LogoStore - Gerencia o estado global da aplicação de logos
@@ -34,18 +36,26 @@ const useLogoStore = create((set, get) => ({
   
   // Métodos para projeto/logo
   selectLogo: async (logoId) => {
-    const template = availableSVGTemplates.find(t => t.id === logoId);
+    const template = getAllTemplates().find(t => t.id === logoId);
     if (!template) return false;
     
     try {
-      // Carregar o SVG do template
-      const response = await fetch(template.path);
-      if (!response.ok) throw new Error('Falha ao carregar SVG');
-      
-      const svgContent = await response.text();
+      // Carregar o SVG do template usando o método de utils/SVGTemplates
+      const svgContent = await loadTemplateContent(logoId);
+      if (!svgContent) throw new Error('Falha ao carregar SVG');
       
       // Analisar o SVG para extrair elementos identificáveis
       const elementMap = await svgManager.parseSVGElements(svgContent);
+      
+      // Iniciar carregamento das fontes necessárias
+      await fontManager.initialize();
+      
+      // Aplicar paleta de cores padrão
+      const defaultPalette = {
+        primary: '#0B3C5D', 
+        secondary: '#328CC1', 
+        accent: '#D9B310'
+      };
       
       set(state => ({
         currentProject: {
@@ -54,6 +64,7 @@ const useLogoStore = create((set, get) => ({
           svgContent,
           elements: elementMap,
           selectedElementId: null, // Resetar qualquer seleção anterior
+          colorPalette: defaultPalette,
         }
       }));
       
@@ -102,8 +113,47 @@ const useLogoStore = create((set, get) => ({
   
   // Métodos para gerenciamento de paletas de cores
   applyColorPalette: (paletteId) => {
-    const palette = colorManager.getPalette(paletteId);
-    if (!palette) return false;
+    let palette;
+    
+    // Verificar se o paletteId é uma string (nome da paleta) ou um objeto (paleta personalizada)
+    if (typeof paletteId === 'string') {
+      // Pegar uma paleta predefinida do color manager
+      const colorScheme = colorManager.getActiveColorScheme().find(scheme => scheme === paletteId);
+      if (!colorScheme) {
+        // Se não encontrou, tentar usar o esquema 'modern' como fallback
+        colorManager.setActiveColorScheme('modern');
+        const colors = colorManager.getActiveColorScheme();
+        palette = {
+          primary: colors.find(c => c.name === 'Primary').hex,
+          secondary: colors.find(c => c.name === 'Secondary').hex,
+          accent: colors.find(c => c.name === 'Accent').hex,
+          dark: colors.find(c => c.name === 'Dark').hex,
+          light: colors.find(c => c.name === 'Light').hex
+        };
+      } else {
+        // Usar a paleta encontrada
+        const colors = colorManager.getActiveColorScheme();
+        palette = {
+          primary: colors.find(c => c.name === 'Primary').hex,
+          secondary: colors.find(c => c.name === 'Secondary').hex,
+          accent: colors.find(c => c.name === 'Accent').hex,
+          dark: colors.find(c => c.name === 'Dark').hex,
+          light: colors.find(c => c.name === 'Light').hex
+        };
+      }
+    } else if (typeof paletteId === 'object') {
+      // Usar uma paleta personalizada passada diretamente
+      palette = paletteId;
+    } else {
+      // Usar paleta técnica padrão
+      palette = {
+        primary: '#0B3C5D',
+        secondary: '#328CC1',
+        accent: '#D9B310',
+        dark: '#1D2731',
+        light: '#F5F5F5'
+      };
+    }
     
     const { currentProject } = get();
     
@@ -136,6 +186,12 @@ const useLogoStore = create((set, get) => ({
       svgManager.updateElementProperty(id, 'fill', updatedElement.fill);
     });
     
+    // Usar ColorManager para aplicar cores também nos textos
+    currentProject.textElements.forEach(text => {
+      const textColor = colorManager.getTextColorForBackground(palette.primary);
+      svgManager.updateTextElement(text.id, { fill: textColor });
+    });
+    
     set(state => ({
       currentProject: {
         ...state.currentProject,
@@ -148,12 +204,38 @@ const useLogoStore = create((set, get) => ({
   },
   
   // Métodos para manipulação de texto
-  addTextElement: (textProps) => {
+  addTextElement: async (textProps) => {
+    // Carregar as fontes disponíveis se ainda não estiverem carregadas
+    await fontManager.initialize();
+    
+    // Obter a primeira fonte disponível como padrão se o fontFamily não for especificado
+    const availableFonts = fontManager.getAvailableFonts();
+    const defaultFont = availableFonts.length > 0 ? availableFonts[0].family : 'Arial';
+    
+    // Se a fonte não for especificada, usar a padrão
+    if (!textProps.fontFamily) {
+      textProps.fontFamily = defaultFont;
+    }
+    
+    // Definir cor de texto com contraste adequado em relação ao fundo se não foi especificada
+    if (!textProps.fill) {
+      const { currentProject } = get();
+      if (currentProject.colorPalette) {
+        // Usar ColorManager para definir uma cor de texto com bom contraste
+        textProps.fill = colorManager.getTextColorForBackground(currentProject.colorPalette.primary);
+      } else {
+        textProps.fill = '#000000'; // Cor padrão
+      }
+    }
+    
     const id = `text-${Date.now()}`;
     const textElement = {
       id,
       ...textProps
     };
+    
+    // Carregar a fonte especificada antes de adicionar o texto
+    await fontManager.loadFont(textProps.fontFamily);
     
     // Adicionar o elemento de texto no DOM via SVGManager
     svgManager.addTextElement(textElement);
@@ -168,11 +250,16 @@ const useLogoStore = create((set, get) => ({
     return id;
   },
   
-  updateTextElement: (textId, properties) => {
+  updateTextElement: async (textId, properties) => {
     const { currentProject } = get();
     const textElement = currentProject.textElements.find(el => el.id === textId);
     
     if (!textElement) return false;
+    
+    // Se a fonte está sendo alterada, garantir que seja carregada
+    if (properties.fontFamily) {
+      await fontManager.loadFont(properties.fontFamily);
+    }
     
     // Atualizar as propriedades no elemento
     const updatedTextElement = { ...textElement, ...properties };
@@ -195,10 +282,23 @@ const useLogoStore = create((set, get) => ({
   
   // Métodos para exportação (integração com ExportManager)
   exportLogo: async (format, resolution = 1) => {
-    // A implementação aqui depende do ExportManager
-    // Retornar o resultado da exportação
-    // Implementado no ExportManager.jsx
-    return true;
+    try {
+      // Garantir que as fontes estão carregadas para a exportação
+      await fontManager.initialize();
+      
+      if (format === 'svg') {
+        // Exportar como SVG usando o exportManager
+        return exportManager.exportSVG();
+      } else if (format === 'png') {
+        // Exportar como PNG usando o exportManager com a resolução especificada
+        return await exportManager.exportPNG([], resolution);
+      } else {
+        throw new Error(`Formato não suportado: ${format}`);
+      }
+    } catch (error) {
+      console.error('Erro na exportação:', error);
+      return null;
+    }
   }
 }));
 

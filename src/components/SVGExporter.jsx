@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useLogoStore from '../store/LogoStore';
+import exportManager from '../services/ExportManager';
+import fontManager from '../services/FontManager';
 
 const SVGExporter = () => {
   const [format, setFormat] = useState('svg');
   const [resolution, setResolution] = useState(1);
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
   const { exportLogo } = useLogoStore();
+  
+  // Pré-carregar fontes ao montar o componente
+  useEffect(() => {
+    const preloadFonts = async () => {
+      await fontManager.initialize();
+    };
+    preloadFonts();
+  }, []);
   
   const handleExport = async () => {
     try {
+      setIsExporting(true);
+      
+      // Garantir que as fontes estejam carregadas antes da exportação
+      await fontManager.initialize();
+      
+      // Usar o exportLogo do LogoStore que já integra com o ExportManager
       const result = await exportLogo(format, resolution);
       
       if (result) {
@@ -30,6 +47,8 @@ const SVGExporter = () => {
     } catch (error) {
       console.error('Erro ao exportar logo:', error);
       alert('Não foi possível exportar o logo. Por favor, tente novamente.');
+    } finally {
+      setIsExporting(false);
     }
   };
   
@@ -92,9 +111,10 @@ const SVGExporter = () => {
       <div className="flex flex-col gap-4">
         <button
           onClick={handleExport}
-          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          disabled={isExporting}
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Exportar
+          {isExporting ? 'Exportando...' : 'Exportar'}
         </button>
         
         {downloadUrl && (

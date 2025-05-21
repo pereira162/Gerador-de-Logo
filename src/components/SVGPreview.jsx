@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import useLogoStore from '../store/LogoStore';
 import svgManager from '../services/SVGManager';
+import fontManager from '../services/FontManager';
 
 const SVGPreview = ({ width = 400, height = 400 }) => {
   const canvasRef = useRef(null);
@@ -18,16 +19,33 @@ const SVGPreview = ({ width = 400, height = 400 }) => {
   
   // Carregar SVG no canvas quando o conteúdo mudar
   useEffect(() => {
-    if (canvasRef.current && currentProject.svgContent) {
-      // Limpar qualquer conteúdo existente
-      while (canvasRef.current.firstChild) {
-        canvasRef.current.removeChild(canvasRef.current.firstChild);
+    const loadSVGContent = async () => {
+      if (canvasRef.current && currentProject.svgContent) {
+        // Garantir que as fontes estão carregadas antes de renderizar
+        await fontManager.initialize();
+        
+        // Limpar qualquer conteúdo existente
+        while (canvasRef.current.firstChild) {
+          canvasRef.current.removeChild(canvasRef.current.firstChild);
+        }
+        
+        // Inicializar o SVG Manager com o novo conteúdo
+        svgManager.initialize(currentProject.svgContent, 'editing-canvas');
+        
+        // Renderizar elementos de texto se existirem
+        if (currentProject.textElements && currentProject.textElements.length > 0) {
+          currentProject.textElements.forEach(async (textElement) => {
+            if (textElement.fontFamily) {
+              await fontManager.loadFont(textElement.fontFamily);
+            }
+            svgManager.updateTextElement(textElement.id, textElement);
+          });
+        }
       }
-      
-      // Inicializar o SVG Manager com o novo conteúdo
-      svgManager.initialize(currentProject.svgContent, 'editing-canvas');
-    }
-  }, [currentProject.svgContent]);
+    };
+    
+    loadSVGContent();
+  }, [currentProject.svgContent, currentProject.textElements]);
   
   // Destacar o elemento selecionado
   useEffect(() => {

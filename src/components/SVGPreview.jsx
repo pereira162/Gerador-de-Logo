@@ -54,7 +54,7 @@ const SVGPreview = ({ width = 400, height = 400, containerId = 'svg-preview-defa
 
   // Reaplicar o highlight se o elemento selecionado mudar E este for o canvas principal de edição
   useEffect(() => {
-    if (svgManager.draw && containerId === 'editing-canvas') { // Assume que 'editing-canvas' é o ID do canvas principal
+    if (svgManager.svgElement && containerId === 'main-editing-canvas-preview') { // Main editing canvas ID
         svgManager.highlightSelectedElement(currentProject.selectedElementId);
     }
   }, [currentProject.selectedElementId, containerId]);
@@ -63,7 +63,7 @@ const SVGPreview = ({ width = 400, height = 400, containerId = 'svg-preview-defa
     <div className="bg-white p-4 rounded-lg shadow-md">
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-800">Prévia do Logo</h2>
-        {containerId === 'editing-canvas' && <p className="text-gray-500 text-sm">Clique em um elemento para editá-lo</p>}
+        {containerId === 'main-editing-canvas-preview' && <p className="text-gray-500 text-sm">Clique em um elemento para editá-lo</p>}
       </div>
       
       <div 

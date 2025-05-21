@@ -23,3 +23,9 @@
 ::-webkit-scrollbar-corner {
   display: none;
 }
+
+/* SVG Element Selection Styles */
+.selected-highlight {
+  outline: 2px dashed #2563eb; /* Blue outline */
+  outline-offset: 2px;
+}

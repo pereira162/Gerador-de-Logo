@@ -12,7 +12,7 @@ const initialProjectState = {
   svgContent: null, // Esta será a fonte da verdade para o SVG visual
   elements: new Map(), 
   textElements: [], 
-  colorPalette: colorManager.palettes['modern'] || colorManager.getAllColorSchemes()[0], // Pega a primeira se 'modern' não existir
+  colorPalette: colorManager.colorSchemes['modern'] || Object.values(colorManager.getAllColorSchemes())[0], // Pega a primeira se 'modern' não existir
   transformations: new Map(),
   currentElementStyles: {}, // Para guardar estilos lidos do elemento selecionado
   // currentElementTransform já estava no Software_Architecture_Document.md, vamos usar 'transformations' Map

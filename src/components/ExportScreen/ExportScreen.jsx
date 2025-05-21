@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useLogoStore from '../../store/LogoStore';
 import exportManager from '../../services/ExportManager';
+import svgManager from '../../services/SVGManager';
 import '../../index.css';
 
 const ExportScreen = () => {
@@ -10,6 +11,21 @@ const ExportScreen = () => {
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [fileName, setFileName] = useState('meu-logo');
+
+  // Get the current SVG content from the store
+  const svgContent = useLogoStore(state => state.currentProject.svgContent);
+  const selectedLogoId = useLogoStore(state => state.currentProject.selectedLogoId);
+
+  // Initialize the SVG content in the editing canvas
+  useEffect(() => {
+    if (!svgContent || !selectedLogoId) return;
+    
+    // Initialize the SVG Manager with the current SVG content
+    svgManager.initialize(svgContent, "editing-canvas");
+    
+    // Set the SVG content in the export manager for export functionality
+    exportManager.setSVGContent(svgContent);
+  }, [svgContent, selectedLogoId]);
 
   // Função para exportar o logo
   const handleExport = async () => {

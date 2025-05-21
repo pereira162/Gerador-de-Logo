@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useLogoStore from '../../store/LogoStore';
 import fontManager from '../../services/FontManager';
+import svgManager from '../../services/SVGManager';
 import '../../index.css';
 
 const TypographyScreen = () => {
@@ -12,12 +13,25 @@ const TypographyScreen = () => {
   const [fontSize, setFontSize] = useState(24);
   const [textColor, setTextColor] = useState('#000000');
 
+  // Get the current SVG content from the store
+  const svgContent = useLogoStore(state => state.currentProject.svgContent);
+  const selectedLogoId = useLogoStore(state => state.currentProject.selectedLogoId);
+
   // Obter todas as fontes disponíveis
   const availableFonts = fontManager.getAllFonts();
   
   // Obter pesos de fonte disponíveis para a fonte selecionada
   const selectedFontObj = fontManager.getFont(selectedFont);
   const availableWeights = selectedFontObj ? selectedFontObj.weights : ['400', '700'];
+
+  // Initialize the SVG content in the editing canvas
+  useEffect(() => {
+    if (!svgContent || !selectedLogoId) return;
+    
+    // Initialize the SVG Manager with the current SVG content
+    svgManager.initialize(svgContent, "editing-canvas");
+    
+  }, [svgContent, selectedLogoId]);
 
   // Manipuladores de eventos
   const handleAddCompanyName = () => {

@@ -56,6 +56,38 @@ const SVG_TEMPLATES = {
       description: 'Abstract organic shape',
       category: 'special',
     },
+    {
+      id: 'curve',
+      name: 'Curve',
+      path: '/assets/svg-templates/curve-icon.svg',
+      thumbnail: '/assets/svg-templates/curve-icon.svg',
+      description: 'Flowing curves design',
+      category: 'special',
+    },
+    {
+      id: 'grid',
+      name: 'Grid',
+      path: '/assets/svg-templates/grid-icon.svg',
+      thumbnail: '/assets/svg-templates/grid-icon.svg',
+      description: 'Modern grid pattern',
+      category: 'special',
+    },
+    {
+      id: 'lines',
+      name: 'Lines',
+      path: '/assets/svg-templates/lines-icon.svg',
+      thumbnail: '/assets/svg-templates/lines-icon.svg',
+      description: 'Dynamic line pattern',
+      category: 'special',
+    },
+    {
+      id: 'spiral',
+      name: 'Spiral',
+      path: '/assets/svg-templates/spiral-icon.svg',
+      thumbnail: '/assets/svg-templates/spiral-icon.svg',
+      description: 'Elegant spiral shape',
+      category: 'special',
+    },
   ],
 };
 

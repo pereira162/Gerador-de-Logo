@@ -8,14 +8,20 @@ const EditingCanvas = () => {
   const selectedElementId = useLogoStore(state => state.currentProject.selectedElementId);
   const selectedLogoId = useLogoStore(state => state.currentProject.selectedLogoId);
   
+  // Get the current SVG content from the store
+  const svgContent = useLogoStore(state => state.currentProject.svgContent);
+  
   // Set up SVG manager and initialize the canvas
   useEffect(() => {
-    if (!canvasRef.current || !selectedLogoId) return;
+    if (!canvasRef.current || !selectedLogoId || !svgContent) return;
     
     // Set the element select callback on the SVG manager
     svgManager.setElementSelectCallback(selectElement);
     
-  }, [canvasRef, selectElement, selectedLogoId]);
+    // Initialize the SVG content in the canvas
+    svgManager.initialize(svgContent, "editing-canvas");
+    
+  }, [canvasRef, selectElement, selectedLogoId, svgContent]);
   
   return (
     <div className="h-full flex flex-col">

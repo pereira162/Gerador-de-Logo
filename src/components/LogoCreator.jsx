@@ -6,6 +6,7 @@ import SVGExporter from './SVGExporter'; // Usado na tela de exportação
 import useLogoStore from '../store/LogoStore';
 import colorManager from '../services/ColorManager';
 import fontManager from '../services/FontManager';
+import TypographyScreen from './TypographyScreen/TypographyScreen'; // Importando o componente TypographyScreen
 
 // Importar os painéis de edição que podem ter sido separados
 // import PropertiesPanel from './EditorScreen/PropertiesPanel'; // Se você tiver

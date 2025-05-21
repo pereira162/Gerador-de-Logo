@@ -5,7 +5,7 @@ import { resolve } from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // Use relative paths to support any deployment environment
+  base: '/Gerador-de-Logo/', // Substitua pelo nome do seu repositório
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

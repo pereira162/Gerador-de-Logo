@@ -22,7 +22,7 @@ const ExportScreen = () => {
     
     const initSVG = async () => {
       // Initialize the SVG Manager with the current SVG content using a unique ID
-      svgManager.initialize(svgContent, "export-screen-preview-canvas");
+      svgManager.initialize(svgContent, "export-screen-preview-container");
     };
     
     initSVG();
@@ -101,7 +101,7 @@ const ExportScreen = () => {
             }}
           >
             <div 
-              id="export-screen-preview-canvas" 
+              id="export-screen-preview-container" 
               className="w-full h-full flex items-center justify-center"
             />
           </div>

@@ -34,9 +34,10 @@ const SVGPreview = ({ width = 400, height = 400, containerId = 'svg-preview-defa
             while (container.firstChild) {
                 container.removeChild(container.firstChild);
             }
+            console.log(`SVGPreview: Initializing SVG in container ${containerId} with content:`, currentProject.svgContent.substring(0, 50) + '...');
             svgManager.initialize(currentProject.svgContent, containerId);
             // O highlight é chamado pelo store quando selectedElementId muda
-            if (currentProject.selectedElementId && containerId === 'editing-canvas') { // Só destaca no canvas principal
+            if (currentProject.selectedElementId && containerId === 'main-editing-canvas-preview') { // Atualizado para novo ID
                  svgManager.highlightSelectedElement(currentProject.selectedElementId);
             }
         } else {
@@ -54,10 +55,14 @@ const SVGPreview = ({ width = 400, height = 400, containerId = 'svg-preview-defa
 
   // Reaplicar o highlight se o elemento selecionado mudar E este for o canvas principal de edição
   useEffect(() => {
-    if (svgManager.svgElement && containerId === 'main-editing-canvas-preview') { // Main editing canvas ID
-        svgManager.highlightSelectedElement(currentProject.selectedElementId);
+    if (containerId === 'main-editing-canvas-preview' && currentProject.selectedElementId) { // Main editing canvas ID
+        // Re-initialize for the selected container to ensure proper element selection
+        if (currentProject.svgContent) {
+            svgManager.initialize(currentProject.svgContent, containerId);
+            svgManager.highlightSelectedElement(currentProject.selectedElementId);
+        }
     }
-  }, [currentProject.selectedElementId, containerId]);
+  }, [currentProject.selectedElementId, containerId, currentProject.svgContent]);
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">

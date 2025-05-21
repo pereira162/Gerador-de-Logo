@@ -248,7 +248,7 @@ const LogoCreator = () => {
           <div className="container mx-auto p-4">
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="lg:w-1/2">
-                <SVGPreview containerId="export-screen-preview" /> {/* ID Único */}
+                <SVGPreview containerId="export-screen-preview-container" /> {/* ID Único */}
               </div>
               <div className="lg:w-1/2">
                 <SVGExporter />

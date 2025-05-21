@@ -75,6 +75,24 @@ export const LOGO_TEMPLATES = [
 4. Select your logo and ensure it loads correctly in the editor
 5. Test customization options like colors and transformations
 
+## Integration with Color Themes
+
+Ensure your SVG properly works with the platform's color theme system:
+
+1. **Proper Class Assignment**: Double-check that shape elements have the correct color classes assigned (`primary-color-element`, `secondary-color-element`, `accent-color-element`)
+2. **Color Contrast**: Test your design with different color schemes to ensure good visibility
+3. **Default Colors**: Provide sensible default colors that work well if no theme is applied
+
+## SVG Element Requirements for Interactive Editing
+
+For your SVG elements to work properly with the interactive editor:
+
+1. **Unique IDs**: Every editable element must have a unique ID attribute
+2. **Simple Paths**: Use simple path definitions when possible for better performance
+3. **Proper Grouping**: Group related elements logically using `<g>` tags with descriptive IDs
+4. **Transformations**: Avoid complex nested transformations that might break the editor's transform tools
+5. **Size Considerations**: Design with the understanding that elements may be resized or repositioned
+
 ## Troubleshooting Common Issues
 
 ### Icon Doesn't Appear in Selection Screen
@@ -92,12 +110,32 @@ export const LOGO_TEMPLATES = [
 - Verify each element has a unique ID
 - Check if elements are grouped correctly with proper IDs
 
+### SVG Renders Incorrectly
+
+- Validate your SVG code with an online validator
+- Check for unsupported features or complex effects
+- Simplify paths and remove unnecessary attributes
+
 ## Best Practices
 
 - Keep designs simple and focused on geometric principles
 - Test your SVG in multiple browsers for compatibility
 - Consider providing multiple variants of a design concept
 - Follow the existing naming conventions and file structure
+- Optimize SVGs to remove editor metadata and redundant information
+- Test with different screen sizes to ensure responsiveness
+- Document any special considerations for your specific template
+
+## Template Categorization Guidelines
+
+When adding your template to the registry, choose the most appropriate category:
+
+- **abstract**: Non-representational geometric designs focusing on shapes and form
+- **geometric**: Designs based on precise geometric elements and mathematical principles
+- **minimal**: Ultra-simplified designs with very few elements and clean aesthetics
+- **business**: More formal designs suitable for professional services and corporate use
+
+If your design spans multiple categories, choose the one that best represents its primary style.
 
 ---
 

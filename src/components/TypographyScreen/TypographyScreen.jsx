@@ -29,7 +29,7 @@ const TypographyScreen = () => {
     if (!svgContent || !selectedLogoId) return;
     
     // Initialize the SVG Manager with the current SVG content
-    svgManager.initialize(svgContent, "typography-screen-preview-canvas");
+    svgManager.initialize(svgContent, "typography-screen-preview-container");
     
   }, [svgContent, selectedLogoId]);
 
@@ -133,7 +133,7 @@ const TypographyScreen = () => {
             }}
           >
             <div 
-              id="typography-screen-preview-canvas" 
+              id="typography-screen-preview-container" 
               className="w-full h-full flex items-center justify-center"
             />
           </div>

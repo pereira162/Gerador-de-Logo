@@ -14,10 +14,12 @@
     "@emotion/styled": "^11.13.0",
     "@mui/material": "^6.0.2",
     "@supabase/supabase-js": "^2.47.12",
+    "@svgdotjs/svg.js": "^3.2.4",
     "@types/prop-types": "^15.7.14",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

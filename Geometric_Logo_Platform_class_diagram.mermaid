@@ -1,0 +1,239 @@
+classDiagram
+    class App {
+        <<Entry Point>>
+        +render()
+    }
+    
+    %% Core State Management
+    class LogoStore {
+        <<State Management>>
+        +LogoProjectState state
+        +selectLogo(logoId)
+        +selectElement(elementId)
+        +updateElement(elementId, properties)
+        +addTextElement(textElement)
+        +updateTextElement(id, properties)
+        +applyColorPalette(palette)
+        +applyElementColor(elementId, color, type)
+        +generateVariants()
+        +exportLogo(format)
+        +undoAction()
+        +redoAction()
+    }
+    
+    %% Data Models
+    class LogoProjectState {
+        <<Model>>
+        +string id
+        +string selectedLogoId
+        +string svgContent
+        +Map~string,LogoElement~ elements
+        +string|null selectedElementId
+        +TextElement[] textElements
+        +ColorPalette colorPalette
+        +HistoryState[] history
+        +Record~string,string~ variants
+    }
+    
+    class LogoElement {
+        <<Model>>
+        +string id
+        +string type
+        +string fill
+        +string stroke
+        +number strokeWidth
+        +number opacity
+        +Transform transform
+        +Object original
+    }
+    
+    class TextElement {
+        <<Model>>
+        +string id
+        +string content
+        +string fontFamily
+        +number fontSize
+        +string fontWeight
+        +string fill
+        +Position position
+        +string alignment
+        +number letterSpacing
+        +string type
+    }
+    
+    class Transform {
+        <<Model>>
+        +{x: number, y: number} translate
+        +number rotate
+        +{x: number, y: number} scale
+        +{x: number, y: number} origin
+    }
+    
+    class ColorPalette {
+        <<Model>>
+        +string id
+        +string name
+        +string primary
+        +string secondary
+        +string accent
+        +boolean isCustom
+    }
+    
+    class Position {
+        <<Model>>
+        +number x
+        +number y
+    }
+    
+    %% Service Classes
+    class SVGManager {
+        <<Service>>
+        +DOMParser parser
+        +Object svgDocument
+        +Object svgInstance
+        +initialize(svgString, containerId)
+        +getElementsMap()
+        +applyTransformation(elementId, transformation)
+        +applyStyle(elementId, style)
+        +addTextElement(textElement)
+        +positionTextElement(textElement, referenceElementId)
+        +toSVGString()
+    }
+    
+    class FontManager {
+        <<Service>>
+        +Map~string,FontFace~ fonts
+        +boolean fontsLoaded
+        +loadFonts()
+        +waitForFontsLoaded()
+        +getAvailableFonts()
+        +getDefaultFont()
+    }
+    
+    class ExportManager {
+        <<Service>>
+        +SVGManager svgManager
+        +FontManager fontManager
+        +exportSVG()
+        +exportPNG(resolution)
+        +generateVariants(logoState)
+        +downloadFile(content, filename)
+        +createZipPackage(files)
+    }
+    
+    class ColorManager {
+        <<Service>>
+        +Map~string,ColorPalette~ presetPalettes
+        +getPresetPalettes()
+        +hexToRgb(hex)
+        +rgbToHex(r, g, b)
+        +applyPaletteToElements(elements, palette)
+        +getContrastColor(backgroundColor)
+    }
+    
+    %% UI Components (Container)
+    class LogoSelectionScreen {
+        <<Container>>
+        +onLogoSelect(logoId)
+        +render()
+    }
+    
+    class MainEditorScreen {
+        <<Container>>
+        +LogoStore logoStore
+        +string activeToolId
+        +setActiveTool(toolId)
+        +render()
+    }
+    
+    class TypographyScreen {
+        <<Container>>
+        +LogoStore logoStore
+        +FontManager fontManager
+        +updateTextContent(id, content)
+        +updateTextStyle(id, style)
+        +updateTextPosition(id, position)
+        +render()
+    }
+    
+    class VariantsExportScreen {
+        <<Container>>
+        +LogoStore logoStore
+        +ExportManager exportManager
+        +selectedVariants: string[]
+        +exportFormat: string
+        +resolution: number
+        +toggleVariantSelection(variantId)
+        +setExportFormat(format)
+        +setResolution(value)
+        +exportSelectedVariants()
+        +render()
+    }
+    
+    %% UI Components (Presentation)
+    class EditingCanvas {
+        <<Component>>
+        +LogoStore logoStore
+        +SVGManager svgManager
+        +handleElementClick(elementId)
+        +handleTransform(elementId, transformData)
+        +render()
+    }
+    
+    class PropertiesPanel {
+        <<Component>>
+        +LogoStore logoStore
+        +handleStyleChange(property, value)
+        +render()
+    }
+    
+    class ColorEditorPanel {
+        <<Component>>
+        +LogoStore logoStore
+        +ColorManager colorManager
+        +boolean isGlobalMode
+        +setColorMode(isGlobal)
+        +handleColorChange(color, type)
+        +selectPalette(paletteId)
+        +render()
+    }
+    
+    class PreviewPanel {
+        <<Component>>
+        +LogoStore logoStore
+        +string currentPreviewContext
+        +setPreviewContext(context)
+        +render()
+    }
+    
+    %% Relationships
+    App --> LogoSelectionScreen
+    App --> MainEditorScreen
+    App --> TypographyScreen
+    App --> VariantsExportScreen
+    
+    LogoStore --> LogoProjectState: manages
+    LogoProjectState --> LogoElement: contains
+    LogoProjectState --> TextElement: contains
+    LogoProjectState --> ColorPalette: uses
+    LogoElement --> Transform: has
+    TextElement --> Position: has
+    
+    MainEditorScreen --> EditingCanvas: contains
+    MainEditorScreen --> PropertiesPanel: contains
+    MainEditorScreen --> ColorEditorPanel: contains
+    MainEditorScreen --> PreviewPanel: contains
+    
+    EditingCanvas --> SVGManager: uses
+    PropertiesPanel --> LogoStore: uses
+    ColorEditorPanel --> ColorManager: uses
+    VariantsExportScreen --> ExportManager: uses
+    TypographyScreen --> FontManager: uses
+    
+    SVGManager ..> LogoElement: manipulates
+    ExportManager --> SVGManager: uses
+    ExportManager --> FontManager: uses
+    LogoStore --> SVGManager: uses
+    LogoStore --> FontManager: uses
+    LogoStore --> ExportManager: uses
+    LogoStore --> ColorManager: uses

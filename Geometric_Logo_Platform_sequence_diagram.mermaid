@@ -1,0 +1,144 @@
+sequenceDiagram
+    %% Actor definitions
+    actor User
+    participant App
+    participant LSS as LogoSelectionScreen
+    participant MES as MainEditorScreen
+    participant EC as EditingCanvas
+    participant PP as PropertiesPanel
+    participant CEP as ColorEditorPanel
+    participant TS as TypographyScreen
+    participant VES as VariantsExportScreen
+    participant LS as LogoStore
+    participant SVGM as SVGManager
+    participant FM as FontManager
+    participant CM as ColorManager
+    participant EM as ExportManager
+    
+    %% 1. Logo Selection Flow
+    User->>App: Open application
+    App->>LSS: Initialize with base logos
+    LSS->>LSS: Render logo grid
+    User->>LSS: Click logo template
+    LSS->>LS: selectLogo(logoId)
+    LS->>SVGM: initialize(svgString, containerId)
+    SVGM->>SVGM: Parse SVG document
+    SVGM-->>LS: Return elements map
+    LS->>LS: Set initial state
+    LS-->>App: Update app state
+    App->>MES: Navigate to editor
+    MES->>EC: Render with SVG content
+    MES->>PP: Initialize with empty selection
+    
+    %% 2. Element Editing Flow
+    User->>EC: Click on SVG element
+    EC->>LS: selectElement(elementId)
+    LS->>LS: Update selectedElementId
+    LS-->>PP: Reflect selected element
+    PP->>PP: Show element properties
+    User->>PP: Modify element properties
+    PP->>LS: updateElement(elementId, properties)
+    LS->>SVGM: applyStyle(elementId, style)
+    SVGM->>SVGM: Update SVG element
+    SVGM-->>LS: Return success status
+    LS-->>EC: Update visual representation
+    
+    %% 3. Element Transformation Flow
+    User->>EC: Drag element handle
+    EC->>EC: Calculate transformation
+    EC->>LS: updateElement(elementId, {transform})
+    LS->>SVGM: applyTransformation(elementId, transform)
+    SVGM->>SVGM: Apply SVG transform
+    SVGM-->>LS: Return success status
+    LS-->>EC: Update visual representation
+    
+    %% 4. Color Customization Flow
+    User->>CEP: Open color editor
+    CEP->>CM: getPresetPalettes()
+    CM-->>CEP: Return available palettes
+    CEP->>CEP: Render color options
+    
+    %% 4a. Element-specific color
+    User->>CEP: Select element color
+    CEP->>LS: applyElementColor(elementId, color, 'fill')
+    LS->>SVGM: applyStyle(elementId, {fill: color})
+    SVGM->>SVGM: Update element style
+    SVGM-->>LS: Return success status
+    LS-->>EC: Update visual representation
+    
+    %% 4b. Global color scheme
+    User->>CEP: Select color palette
+    CEP->>LS: applyColorPalette(palette)
+    LS->>CM: applyPaletteToElements(elements, palette)
+    CM->>CM: Map palette colors to elements
+    CM-->>LS: Return updated elements
+    LS->>SVGM: Apply multiple style updates
+    SVGM-->>LS: Return success status
+    LS-->>EC: Update visual representation
+    
+    %% 5. Typography Flow
+    User->>App: Navigate to typography
+    App->>TS: Initialize
+    TS->>FM: loadFonts()
+    FM->>FM: Load bundled fonts
+    FM-->>TS: Fonts loaded status
+    TS->>TS: Render font options
+    
+    %% 5a. Add company name
+    User->>TS: Enter company name
+    User->>TS: Select font and style
+    TS->>LS: addTextElement({content, style, type: 'companyName'})
+    LS->>SVGM: addTextElement(textElement)
+    SVGM->>SVGM: Create text SVG element
+    SVGM-->>LS: Return text element ID
+    LS->>LS: Update textElements array
+    LS-->>TS: Update visual representation
+    
+    %% 5b. Add tagline
+    User->>TS: Enter tagline
+    TS->>LS: addTextElement({content, style, type: 'tagline'})
+    LS->>SVGM: addTextElement(textElement)
+    SVGM-->>LS: Return text element ID
+    LS-->>TS: Update visual representation
+    
+    %% 5c. Position text
+    User->>TS: Select text position
+    TS->>LS: updateTextElement(id, {position})
+    LS->>SVGM: positionTextElement(textElement, referenceElementId)
+    SVGM->>SVGM: Update text position
+    SVGM-->>LS: Return success status
+    LS-->>TS: Update visual representation
+    
+    %% 6. Variant Generation and Export Flow
+    User->>App: Navigate to export
+    App->>VES: Initialize
+    VES->>LS: generateVariants()
+    LS->>EM: generateVariants(logoState)
+    EM->>SVGM: Create variant SVGs
+    SVGM-->>EM: Return SVG variants
+    EM-->>LS: Return variant data
+    LS-->>VES: Display variants
+    VES->>VES: Render variant previews
+    
+    %% 6a. Export SVG
+    User->>VES: Select SVG export
+    User->>VES: Select variants to export
+    VES->>LS: exportLogo('svg')
+    LS->>EM: exportSVG(selectedVariants)
+    EM->>SVGM: toSVGString()
+    SVGM-->>EM: Return SVG strings
+    EM->>EM: Create download files
+    EM-->>User: Download SVG files
+    
+    %% 6b. Export PNG
+    User->>VES: Select PNG export
+    User->>VES: Set PNG resolution
+    VES->>LS: exportLogo('png', resolution)
+    LS->>EM: exportPNG(selectedVariants, resolution)
+    EM->>FM: waitForFontsLoaded()
+    FM-->>EM: Fonts ready
+    EM->>EM: Create canvas element
+    EM->>EM: Render SVG to canvas
+    EM->>EM: Extract PNG data URLs
+    EM->>EM: Create download files
+    EM-->>User: Download PNG files

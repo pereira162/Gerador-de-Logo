@@ -176,43 +176,56 @@ function addTextElement(text, font, position) {
 **Implementation:**
 - Implement export to SVG format
 - Implement export to PNG using Canvas API
+- Handle proper parameter passing for both export types
 
-**PNG Export Logic:**
+**Export Implementation:**
 ```javascript
-async function exportToPNG(resolution = 1) {
-  // Ensure fonts are loaded
-  await fontManager.waitForFontsLoaded();
+// In LogoStore.jsx
+exportLogo: async (format, resolution = 1, filename = 'logo') => {
+  const { svgContent } = get().currentProject;
+  if (!svgContent) {
+    alert("Nenhum logo para exportar.");
+    console.error("LogoStore: Nenhum svgContent para exportar.");
+    return null;
+  }
   
-  // Get SVG string
-  const svgString = svgManager.toSVGString();
+  try {
+    if (format === 'svg') {
+      return exportManager.exportSVG(svgContent, `${filename}.svg`);
+    } else if (format === 'png') {
+      return await exportManager.exportPNG(svgContent, `${filename}.png`, resolution);
+    } else {
+      throw new Error(`Formato de exportação não suportado: ${format}`);
+    }
+  } catch (error) {
+    console.error('LogoStore: Erro na exportação:', error);
+    alert(`Erro ao exportar como ${format.toUpperCase()}. Verifique o console.`);
+    return null;
+  }
+}
+
+// In ExportManager.jsx
+exportSVG(svgContent, filename = 'logo.svg') {
+  if (!svgContent || typeof svgContent !== 'string') {
+    console.error('ExportManager: Conteúdo SVG inválido ou não fornecido para exportação.');
+    alert("Nenhum logo para exportar como SVG.");
+    return null;
+  }
   
-  // Create canvas with appropriate size
-  const canvas = document.createElement('canvas');
-  canvas.width = 400 * resolution;
-  canvas.height = 400 * resolution;
-  const ctx = canvas.getContext('2d');
+  const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+  this._triggerDownload(blob, filename);
+  return svgContent;
+}
+
+async exportPNG(svgContent, filename = 'logo.png', resolutionScale = 1) {
+  if (!svgContent || typeof svgContent !== 'string') {
+    console.error('ExportManager: Conteúdo SVG inválido ou não fornecido para exportação PNG.');
+    alert("Nenhum logo para exportar como PNG.");
+    return null;
+  }
   
-  // Draw SVG on canvas
-  const img = new Image();
-  const svgBlob = new Blob([svgString], {type: 'image/svg+xml'});
-  const url = URL.createObjectURL(svgBlob);
-  
-  return new Promise((resolve) => {
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const pngUrl = canvas.toDataURL('image/png');
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.download = 'logo.png';
-      link.href = pngUrl;
-      link.click();
-      
-      URL.revokeObjectURL(url);
-      resolve();
-    };
-    img.src = url;
-  });
+  // Load fonts, create canvas, draw SVG, and generate PNG download
+  // ...
 }
 ```
 

@@ -23,8 +23,7 @@ const ExportScreen = () => {
     // Initialize the SVG Manager with the current SVG content
     svgManager.initialize(svgContent, "editing-canvas");
     
-    // Set the SVG content in the export manager for export functionality
-    exportManager.setSVGContent(svgContent);
+    // Note: We don't need to set SVG content in export manager as it receives it directly in export methods
   }, [svgContent, selectedLogoId]);
 
   // Função para exportar o logo
@@ -34,9 +33,9 @@ const ExportScreen = () => {
       let result;
       
       if (exportFormat === 'svg') {
-        result = exportManager.exportSVG();
+        result = exportManager.exportSVG(svgContent, `${fileName}.svg`);
       } else if (exportFormat === 'png') {
-        result = await exportManager.exportPNG([], resolution);
+        result = await exportManager.exportPNG(svgContent, `${fileName}.png`, resolution);
       }
       
       if (result) {

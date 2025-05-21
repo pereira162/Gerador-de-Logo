@@ -65,19 +65,24 @@ The application uses Zustand for state management with the LogoStore centrally m
 
 ## Known Issues
 
-1. **Console Warnings**
+1. **Console Errors (Fixed)**
+   - ✓ Fixed ExportScreen component issues with calling non-existent methods
+   - ✓ Fixed ExportManager integration by properly passing the SVG content and filename parameters
+   - ✓ Ensured proper parameter ordering for both SVG and PNG exports
+
+2. **Other Console Warnings**
    - Potential issues with SVG element selection in the SVGPreview component when multiple previews are present
    - The SVGManager is implemented as a singleton which may cause conflicts when multiple SVG instances are rendered
 
-2. **Performance Considerations**
+3. **Performance Considerations**
    - Font loading can cause slight delays when adding text elements
    - SVG rendering may be slow on complex templates with many elements
 
-3. **User Experience**
+4. **User Experience**
    - Element selection feedback could be improved for better visual indication
    - Limited undo/redo functionality (planned for P1)
 
-4. **Browser Compatibility**
+5. **Browser Compatibility**
    - Some SVG operations may behave differently across browsers
    - Font loading may have inconsistent behavior in certain browsers
 
@@ -85,11 +90,16 @@ The application uses Zustand for state management with the LogoStore centrally m
 
 ### Immediate Fixes
 
-1. **Resolve SVGManager Instance Issues**
+1. **✓ Fixed Export Functionality Issues**
+   - Fixed method calls in the ExportScreen component
+   - Corrected parameter handling in export methods
+   - Ensured proper SVG content is passed to export functions
+
+2. **Resolve SVGManager Instance Issues**
    - Refactor SVGManager to support multiple instances or properly handle different canvas IDs
    - Fix element selection in different preview contexts
 
-2. **Improve Error Handling**
+3. **Improve Error Handling**
    - Add better error messaging for SVG parsing failures
    - Implement graceful fallbacks for font loading issues
 

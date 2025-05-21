@@ -8,6 +8,32 @@ class SVGManager {
     this.svgNamespace = "http://www.w3.org/2000/svg";
     this.elementSelectCallback = null;
     this.selectedElement = null;
+    this._eventListeners = new Map(); // Track event listeners for cleanup
+  }
+
+  _cleanup() {
+    // Remove all event listeners
+    if (this._eventListeners.size > 0) {
+      this._eventListeners.forEach((listeners, element) => {
+        listeners.forEach(({type, handler}) => {
+          element.removeEventListener(type, handler);
+        });
+      });
+      this._eventListeners.clear();
+    }
+
+    // Clear the container
+    if (this.svgContainer) {
+      while (this.svgContainer.firstChild) {
+        this.svgContainer.removeChild(this.svgContainer.firstChild);
+      }
+    }
+
+    // Reset selected element
+    if (this.selectedElement) {
+      this.selectedElement.classList.remove('selected-highlight');
+      this.selectedElement = null;
+    }
   }
 
   // Inicializar o SVG Manager com conteúdo SVG em um container específico
@@ -19,15 +45,32 @@ class SVGManager {
       return false;
     }
     
-    // Limpar o container
-    while (this.svgContainer.firstChild) {
-      this.svgContainer.removeChild(this.svgContainer.firstChild);
+    if (!svgContent || typeof svgContent !== 'string') {
+      console.error('SVG content inválido');
+      return false;
     }
+    
+    // Limpar o container e remover event listeners antigos
+    this._cleanup();
     
     // Criar parser de DOM para o SVG
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+    
+    // Verificar se o parsing foi bem sucedido
+    const parserError = svgDoc.querySelector('parsererror');
+    if (parserError) {
+      console.error('SVG parsing error:', parserError.textContent);
+      return false;
+    }
+    
     this.svgElement = svgDoc.documentElement;
+    
+    // Validar se é realmente um elemento SVG
+    if (this.svgElement.tagName !== 'svg') {
+      console.error('O documento não é um SVG válido');
+      return false;
+    }
     
     // Garantir que o SVG tenha viewBox e dimensões adequadas
     if (!this.svgElement.getAttribute('viewBox')) {
@@ -56,25 +99,40 @@ class SVGManager {
     
     editableElements.forEach(element => {
       // Adicionar evento de clique para seleção
-      element.addEventListener('click', (event) => {
+      const clickHandler = (event) => {
         event.stopPropagation();
         const elementId = element.id || element.getAttribute('data-id');
         
         if (elementId && this.elementSelectCallback) {
           this.elementSelectCallback(elementId);
         }
-      });
+      };
       
+      // Registrar o handler para limpeza posterior
+      if (!this._eventListeners.has(element)) {
+        this._eventListeners.set(element, []);
+      }
+      this._eventListeners.get(element).push({ type: 'click', handler: clickHandler });
+      
+      element.addEventListener('click', clickHandler);
       // Adicionar estilo hover para indicar elementos clicáveis
       element.style.cursor = 'pointer';
     });
     
     // Clicar no SVG (fora dos elementos) deve desselecionar
-    this.svgElement.addEventListener('click', (event) => {
+    const svgClickHandler = (event) => {
       if (event.target === this.svgElement && this.elementSelectCallback) {
         this.elementSelectCallback(null); // Desselecionar
       }
-    });
+    };
+    
+    // Registrar o handler do SVG para limpeza
+    if (!this._eventListeners.has(this.svgElement)) {
+      this._eventListeners.set(this.svgElement, []);
+    }
+    this._eventListeners.get(this.svgElement).push({ type: 'click', handler: svgClickHandler });
+    
+    this.svgElement.addEventListener('click', svgClickHandler);
   }
 
   // Definir callback para quando um elemento for selecionado
@@ -84,36 +142,63 @@ class SVGManager {
 
   // Analisar o SVG e criar um mapa de elementos com suas propriedades
   async parseSVGElements(svgContent) {
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const svgElement = svgDoc.documentElement;
-    
-    // Encontrar todos os elementos que podem ser editados
-    const editableElements = svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g');
-    const elementMap = new Map();
-    
-    editableElements.forEach((element, index) => {
-      // Garantir que cada elemento tenha um ID
-      if (!element.id) {
-        element.id = `element-${index}`;
+    if (!svgContent || typeof svgContent !== 'string') {
+      console.error('SVG content inválido para parsing');
+      return new Map();
+    }
+
+    try {
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      
+      // Verificar erros de parsing
+      const parserError = svgDoc.querySelector('parsererror');
+      if (parserError) {
+        throw new Error(`SVG parsing error: ${parserError.textContent}`);
       }
       
-      // Extrair propriedades relevantes
-      const properties = {
-        type: element.tagName,
-        fill: element.getAttribute('fill') || '#000000',
-        stroke: element.getAttribute('stroke') || 'none',
-        strokeWidth: element.getAttribute('stroke-width') ? parseFloat(element.getAttribute('stroke-width')) : 0,
-        opacity: element.getAttribute('opacity') ? parseFloat(element.getAttribute('opacity')) : 1,
-        // Extrair role para uso com paletas de cores
-        role: element.getAttribute('data-role') || null,
-        // Outras propriedades específicas podem ser adicionadas aqui
-      };
+      const svgElement = svgDoc.documentElement;
+      if (svgElement.tagName !== 'svg') {
+        throw new Error('O documento não é um SVG válido');
+      }
       
-      elementMap.set(element.id, properties);
-    });
-    
-    return elementMap;
+      // Encontrar todos os elementos que podem ser editados
+      const editableElements = svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g');
+      const elementMap = new Map();
+      const usedIds = new Set(); // Rastrear IDs já utilizados
+      
+      editableElements.forEach((element, index) => {
+        let elementId = element.id || element.getAttribute('data-id');
+        
+        // Se não tem ID ou o ID já está em uso, gerar um novo
+        if (!elementId || usedIds.has(elementId)) {
+          elementId = `element-${Date.now()}-${index}`;
+          element.id = elementId;
+        }
+        
+        usedIds.add(elementId);
+        
+        // Extrair propriedades relevantes com valores padrão seguros
+        const properties = {
+          type: element.tagName,
+          fill: element.getAttribute('fill') || '#000000',
+          stroke: element.getAttribute('stroke') || 'none',
+          strokeWidth: parseFloat(element.getAttribute('stroke-width')) || 0,
+          opacity: parseFloat(element.getAttribute('opacity')) || 1,
+          role: element.getAttribute('data-role') || null,
+          // Adicionado timestamp para garantir unicidade em recargas
+          timestamp: Date.now(),
+          originalId: element.id // Manter registro do ID original se necessário
+        };
+        
+        elementMap.set(elementId, properties);
+      });
+      
+      return elementMap;
+    } catch (error) {
+      console.error('Erro ao analisar elementos SVG:', error);
+      return new Map(); // Retornar Map vazio em caso de erro
+    }
   }
 
   // Atualizar propriedade de um elemento

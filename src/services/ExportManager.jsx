@@ -45,76 +45,120 @@ class ExportManager {
       return null;
     }
 
-    // 1. Garantir que as fontes P0 estejam prontas e carregadas.
-    // Uma abordagem mais avançada (P1/P2) seria identificar as fontes USADAS no svgContent
-    // e garantir que apenas elas sejam carregadas.
+    // 1. Extrair e carregar todas as fontes usadas no SVG
     try {
-      await fontManager.loadInitialFonts(); // Ou um método que carregue as fontes P0
-      console.log("Fontes verificadas/carregadas para exportação PNG.");
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const textElements = svgDoc.querySelectorAll('text');
+      const usedFonts = new Set();
+
+      textElements.forEach(text => {
+        const fontFamily = text.getAttribute('font-family');
+        if (fontFamily) {
+          usedFonts.add(fontFamily.replace(/['"]*/g, '')); // Remove quotes
+        }
+      });
+
+      // Carregar todas as fontes usadas
+      const fontLoadPromises = Array.from(usedFonts).map(async font => {
+        try {
+          await fontManager.loadFont(font);
+          console.log(`Fonte ${font} carregada para exportação.`);
+        } catch (err) {
+          console.warn(`Não foi possível carregar a fonte ${font}, usando fallback.`);
+        }
+      });
+
+      await Promise.allSettled(fontLoadPromises); // Continue mesmo se algumas falharem
+      console.log("Fontes necessárias verificadas/carregadas para exportação PNG.");
     } catch (error) {
       console.error("Erro ao carregar fontes para exportação PNG:", error);
-      // Pode-se optar por continuar mesmo assim, o navegador pode usar fallbacks.
-      // alert("Atenção: Algumas fontes podem não ter sido carregadas corretamente para a exportação PNG.");
+      alert("Atenção: Algumas fontes podem não ter sido carregadas corretamente. A exportação continuará com fontes alternativas.");
     }
 
     // 2. Criar uma imagem a partir do SVG string
     return new Promise((resolve, reject) => {
+      // Primeiro, analisar e limpar o SVG
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const svgNode = svgDoc.documentElement;
+      
+      // Extrair e validar dimensões
+      let svgWidth = 400; // Default
+      let svgHeight = 400; // Default
+      
+      // Primeiro tentar viewBox
+      const viewBox = svgNode.getAttribute('viewBox');
+      if (viewBox) {
+        const parts = viewBox.split(/[\s,]+/); // Suporta espaços e vírgulas
+        if (parts.length === 4) {
+          svgWidth = Math.abs(parseFloat(parts[2]));
+          svgHeight = Math.abs(parseFloat(parts[3]));
+        }
+      }
+      
+      // Se não tem viewBox ou dimensões inválidas, tentar width/height
+      if (!viewBox || isNaN(svgWidth) || isNaN(svgHeight) || svgWidth <= 0 || svgHeight <= 0) {
+        const width = svgNode.getAttribute('width');
+        const height = svgNode.getAttribute('height');
+        
+        // Converter unidades para pixels se necessário
+        if (width && height) {
+          const tempDiv = document.createElement('div');
+          tempDiv.style.visibility = 'hidden';
+          document.body.appendChild(tempDiv);
+          
+          tempDiv.style.width = width;
+          svgWidth = tempDiv.offsetWidth || 400;
+          
+          tempDiv.style.height = height;
+          svgHeight = tempDiv.offsetHeight || 400;
+          
+          document.body.removeChild(tempDiv);
+        }
+      }
+      
+      // Garantir dimensões mínimas e válidas
+      svgWidth = Math.max(50, Math.min(4096, svgWidth));
+      svgHeight = Math.max(50, Math.min(4096, svgHeight));
+      
+      // Atualizar o SVG com as dimensões finais
+      svgNode.setAttribute('width', String(svgWidth));
+      svgNode.setAttribute('height', String(svgHeight));
+      
+      // Criar a imagem
       const img = new Image();
-
-      // Para evitar problemas com caracteres especiais e garantir que o SVG seja bem formado para o Image src:
-      // Codificar o SVG string para ser usado em um data URL.
-      // Removido o encodeURIComponent que estava causando problemas com a renderização de SVG em Image.src
-      // O ideal é que o svgContent já seja uma string SVG válida e limpa.
-      // Se houver problemas, pode ser necessário sanitizar ou usar btoa para base64.
-      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${svgContent}`;
-      // Alternativa com base64 se houver problemas com caracteres especiais:
-      // const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgContent)))}`;
-
-
+      const svgString = new XMLSerializer().serializeToString(svgDoc);
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      
       img.onload = () => {
         try {
+          URL.revokeObjectURL(svgUrl); // Limpar o URL do blob
           const canvas = document.createElement('canvas');
-          let svgWidth = 400; // Default
-          let svgHeight = 400; // Default
-
-          // Tentar extrair dimensões do SVG (do viewBox ou width/height)
-          const parser = new DOMParser();
-          const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
-          const svgNode = svgDoc.documentElement;
-
-          if (svgNode) {
-            const viewBox = svgNode.getAttribute('viewBox');
-            if (viewBox) {
-              const parts = viewBox.split(' ');
-              if (parts.length === 4) {
-                svgWidth = parseFloat(parts[2]); // width do viewBox
-                svgHeight = parseFloat(parts[3]); // height do viewBox
-              }
-            } else {
-              // Se não houver viewBox, tenta pegar width/height do elemento SVG
-              // Mas estes podem ser relativos (ex: '100%'), então um fallback numérico é importante.
-              svgWidth = parseFloat(svgNode.getAttribute('width')) || svgWidth;
-              svgHeight = parseFloat(svgNode.getAttribute('height')) || svgHeight;
-            }
-            // Garante que não sejam NaN
-            svgWidth = isNaN(svgWidth) ? 400 : svgWidth;
-            svgHeight = isNaN(svgHeight) ? 400 : svgHeight;
-          }
           
-          canvas.width = svgWidth * resolutionScale;
-          canvas.height = svgHeight * resolutionScale;
+          // Aplicar o fator de escala com limites seguros
+          const scale = Math.max(0.1, Math.min(10, resolutionScale));
+          canvas.width = svgWidth * scale;
+          canvas.height = svgHeight * scale;
           
           const ctx = canvas.getContext('2d');
           
-          // Limpar o canvas para garantir transparência se o SVG não tiver fundo explícito
+          // Habilitar suavização para melhor qualidade
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Limpar o canvas para garantir transparência
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           
+          // Desenhar com alta qualidade
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           
-          const pngDataUrl = canvas.toDataURL('image/png');
+          // Criar PNG com qualidade máxima
+          const pngDataUrl = canvas.toDataURL('image/png', 1.0);
           
           this._triggerDownload(pngDataUrl, filename);
-          console.log(`${filename} exportação PNG iniciada.`);
+          console.log(`${filename} exportação PNG iniciada com escala ${scale}x.`);
           resolve(pngDataUrl); // Retorna o dataURL do PNG
         } catch (e) {
           console.error("Erro ao renderizar SVG no canvas:", e);
@@ -131,15 +175,60 @@ class ExportManager {
       };
       
       img.onerror = (e) => {
-        console.error('Falha ao carregar a imagem SVG para conversão PNG. O SVG pode estar malformado ou conter recursos não suportados.', e);
-        alert('Falha ao preparar a imagem para exportação PNG. Verifique se o logo contém elementos complexos ou fontes não padrão.');
-        if (img.src.startsWith('blob:')) {
-            URL.revokeObjectURL(img.src);
+        console.error('Falha ao carregar a imagem SVG para conversão PNG:', e);
+        
+        // Limpar recursos
+        if (svgUrl) {
+          URL.revokeObjectURL(svgUrl);
         }
-        reject(new Error('Falha ao carregar a imagem SVG para conversão PNG.'));
+        
+        // Tentar método alternativo com base64
+        try {
+          console.log('Tentando método alternativo de exportação...');
+          const base64SVG = btoa(unescape(encodeURIComponent(svgString)));
+          const base64Url = `data:image/svg+xml;base64,${base64SVG}`;
+          
+          // Criar nova imagem com base64
+          const altImg = new Image();
+          altImg.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const scale = Math.max(0.1, Math.min(10, resolutionScale));
+              canvas.width = svgWidth * scale;
+              canvas.height = svgHeight * scale;
+              
+              const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(altImg, 0, 0, canvas.width, canvas.height);
+              
+              const pngDataUrl = canvas.toDataURL('image/png', 1.0);
+              this._triggerDownload(pngDataUrl, filename);
+              console.log(`${filename} exportação PNG concluída (método alternativo).`);
+              resolve(pngDataUrl);
+            } catch (canvasError) {
+              console.error('Falha no método alternativo de exportação:', canvasError);
+              alert('Não foi possível exportar o logo como PNG. Por favor, tente exportar como SVG.');
+              reject(canvasError);
+            }
+          };
+          
+          altImg.onerror = () => {
+            console.error('Ambos os métodos de exportação falharam.');
+            alert('Não foi possível exportar o logo como PNG. Por favor, tente exportar como SVG.');
+            reject(new Error('Falha em ambos os métodos de exportação PNG.'));
+          };
+          
+          altImg.src = base64Url;
+        } catch (base64Error) {
+          console.error('Falha ao tentar método alternativo:', base64Error);
+          alert('Não foi possível exportar o logo como PNG. Por favor, tente exportar como SVG.');
+          reject(base64Error);
+        }
       };
       
-      img.src = svgDataUrl;
+      img.src = svgUrl;
     });
   }
 

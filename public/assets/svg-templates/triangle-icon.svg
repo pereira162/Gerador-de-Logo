@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-  <g id="circle-main-group" class="transform-group">
-    <circle 
-      id="circle-outer" 
+  <g id="triangle-main-group" class="transform-group">
+    <polygon 
+      id="triangle-outer" 
       class="editable editable-fill primary-color-element" 
-      cx="200" cy="200" r="180" 
+      points="200,40 40,340 360,340" 
       fill="#0B3C5D" 
     />
-    <circle 
-      id="circle-inner" 
+    <polygon 
+      id="triangle-middle" 
       class="editable editable-fill secondary-color-element" 
-      cx="200" cy="200" r="120" 
+      points="200,100 100,300 300,300" 
       fill="#328CC1" 
     />
-    <circle 
-      id="circle-center" 
+    <polygon 
+      id="triangle-inner" 
       class="editable editable-fill accent-color-element" 
-      cx="200" cy="200" r="60" 
+      points="200,160 140,260 260,260" 
       fill="#D9B310" 
     />
   </g>

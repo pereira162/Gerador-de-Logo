@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-  <g id="circle-main-group" class="transform-group">
-    <circle 
-      id="circle-outer" 
+  <g id="hexagon-main-group" class="transform-group">
+    <polygon 
+      id="hexagon-outer" 
       class="editable editable-fill primary-color-element" 
-      cx="200" cy="200" r="180" 
+      points="200,40 340,120 340,280 200,360 60,280 60,120" 
       fill="#0B3C5D" 
     />
-    <circle 
-      id="circle-inner" 
+    <polygon 
+      id="hexagon-middle" 
       class="editable editable-fill secondary-color-element" 
-      cx="200" cy="200" r="120" 
+      points="200,100 290,150 290,250 200,300 110,250 110,150" 
       fill="#328CC1" 
     />
-    <circle 
-      id="circle-center" 
+    <polygon 
+      id="hexagon-inner" 
       class="editable editable-fill accent-color-element" 
-      cx="200" cy="200" r="60" 
+      points="200,140 250,170 250,230 200,260 150,230 150,170" 
       fill="#D9B310" 
     />
   </g>

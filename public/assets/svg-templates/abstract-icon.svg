@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <g id="abstract-main-group" class="transform-group">
+    <path 
+      id="abstract-outer" 
+      class="editable editable-fill primary-color-element" 
+      d="M100,50 C150,30 250,30 300,50 C350,80 380,150 370,200 C360,250 320,330 250,350 C180,370 120,340 80,290 C40,240 50,180 70,130 C80,100 90,80 100,50 Z" 
+      fill="#0B3C5D" 
+    />
+    <path 
+      id="abstract-middle" 
+      class="editable editable-fill secondary-color-element" 
+      d="M140,100 C180,85 220,85 260,100 C300,120 320,170 310,210 C300,250 270,300 220,315 C170,330 130,310 100,270 C70,230 80,180 95,140 C105,120 120,105 140,100 Z" 
+      fill="#328CC1" 
+    />
+    <path 
+      id="abstract-inner" 
+      class="editable editable-fill accent-color-element" 
+      d="M170,140 C195,130 215,130 240,140 C265,150 275,180 270,205 C265,230 250,260 220,270 C190,280 165,265 150,240 C135,215 140,185 150,160 C155,150 160,145 170,140 Z" 
+      fill="#D9B310" 
+    />
+  </g>
+</svg>

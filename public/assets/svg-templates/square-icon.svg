@@ -1,5 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" preserveAspectRatio="xMidYMid meet">
-  <g id="icon-group-square" class="transform-group">
-    <rect id="main-square" class="editable editable-fill primary-color-element" x="50" y="50" width="300" height="300" fill="#4F6272" stroke="#202C39" stroke-width="2" rx="10" ry="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <g id="square-main-group" class="transform-group">
+    <rect 
+      id="square-outer" 
+      class="editable editable-fill editable-stroke primary-color-element" 
+      x="40" y="40" width="320" height="320" 
+      fill="#0B3C5D" 
+      stroke="#328CC1" stroke-width="2" 
+    />
+    <rect 
+      id="square-middle" 
+      class="editable editable-fill secondary-color-element" 
+      x="80" y="80" width="240" height="240" 
+      fill="#328CC1" 
+    />
+    <rect 
+      id="square-inner" 
+      class="editable editable-fill accent-color-element" 
+      x="120" y="120" width="160" height="160" 
+      fill="#D9B310" 
+    />
   </g>
 </svg>

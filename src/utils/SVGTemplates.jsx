@@ -1,7 +1,22 @@
+// src/utils/SVGTemplates.jsx
 /**
  * SVGTemplates.jsx - Utility for managing SVG templates for the geometric logo platform
  * Contains references to all SVG templates and methods to access them
  */
+
+// Obter a URL base do ambiente Vite.
+// Esta variável é injetada pelo Vite durante o processo de build.
+// Ela conterá '/Gerador-de-Logo/' quando 'base: "/Gerador-de-Logo/"' estiver em vite.config.js
+// ou '/' em desenvolvimento local.
+const BASE_URL = import.meta.env.BASE_URL;
+
+// Helper para construir caminhos de assets corretamente prefixados com BASE_URL.
+// Garante que não haja barras duplas e que o caminho do asset comece corretamente.
+const buildAssetPath = (assetRelativePath) => {
+  const cleanedBase = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+  const cleanedAssetPath = assetRelativePath.startsWith('/') ? assetRelativePath.slice(1) : assetRelativePath;
+  return `${cleanedBase}/${cleanedAssetPath}`;
+};
 
 // All available SVG template categories and their respective templates
 const SVG_TEMPLATES = {
@@ -9,32 +24,32 @@ const SVG_TEMPLATES = {
     {
       id: 'circle',
       name: 'Circle',
-      path: '/assets/svg-templates/circle-icon.svg',
-      thumbnail: '/assets/svg-templates/circle-icon.svg',
+      path: buildAssetPath('assets/svg-templates/circle-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/circle-icon.svg'),
       description: 'Concentric circles design',
       category: 'basic',
     },
     {
       id: 'square',
       name: 'Square',
-      path: '/assets/svg-templates/square-icon.svg',
-      thumbnail: '/assets/svg-templates/square-icon.svg',
+      path: buildAssetPath('assets/svg-templates/square-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/square-icon.svg'),
       description: 'Nested squares design',
       category: 'basic',
     },
     {
       id: 'triangle',
       name: 'Triangle',
-      path: '/assets/svg-templates/triangle-icon.svg',
-      thumbnail: '/assets/svg-templates/triangle-icon.svg',
+      path: buildAssetPath('assets/svg-templates/triangle-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/triangle-icon.svg'),
       description: 'Layered triangles design',
       category: 'basic',
     },
     {
       id: 'hexagon',
       name: 'Hexagon',
-      path: '/assets/svg-templates/hexagon-icon.svg',
-      thumbnail: '/assets/svg-templates/hexagon-icon.svg',
+      path: buildAssetPath('assets/svg-templates/hexagon-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/hexagon-icon.svg'),
       description: 'Nested hexagons design',
       category: 'basic',
     },
@@ -43,48 +58,48 @@ const SVG_TEMPLATES = {
     {
       id: 'star',
       name: 'Star',
-      path: '/assets/svg-templates/star-icon.svg',
-      thumbnail: '/assets/svg-templates/star-icon.svg',
+      path: buildAssetPath('assets/svg-templates/star-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/star-icon.svg'),
       description: 'Star shape with layers',
       category: 'special',
     },
     {
       id: 'abstract',
       name: 'Abstract',
-      path: '/assets/svg-templates/abstract-icon.svg',
-      thumbnail: '/assets/svg-templates/abstract-icon.svg',
+      path: buildAssetPath('assets/svg-templates/abstract-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/abstract-icon.svg'),
       description: 'Abstract organic shape',
       category: 'special',
     },
     {
       id: 'curve',
       name: 'Curve',
-      path: '/assets/svg-templates/curve-icon.svg',
-      thumbnail: '/assets/svg-templates/curve-icon.svg',
+      path: buildAssetPath('assets/svg-templates/curve-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/curve-icon.svg'),
       description: 'Flowing curves design',
       category: 'special',
     },
     {
       id: 'grid',
       name: 'Grid',
-      path: '/assets/svg-templates/grid-icon.svg',
-      thumbnail: '/assets/svg-templates/grid-icon.svg',
+      path: buildAssetPath('assets/svg-templates/grid-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/grid-icon.svg'),
       description: 'Modern grid pattern',
       category: 'special',
     },
     {
       id: 'lines',
       name: 'Lines',
-      path: '/assets/svg-templates/lines-icon.svg',
-      thumbnail: '/assets/svg-templates/lines-icon.svg',
+      path: buildAssetPath('assets/svg-templates/lines-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/lines-icon.svg'),
       description: 'Dynamic line pattern',
       category: 'special',
     },
     {
       id: 'spiral',
       name: 'Spiral',
-      path: '/assets/svg-templates/spiral-icon.svg',
-      thumbnail: '/assets/svg-templates/spiral-icon.svg',
+      path: buildAssetPath('assets/svg-templates/spiral-icon.svg'),
+      thumbnail: buildAssetPath('assets/svg-templates/spiral-icon.svg'),
       description: 'Elegant spiral shape',
       category: 'special',
     },
@@ -144,21 +159,30 @@ const getTemplateById = (templateId) => {
 };
 
 /**
- * Load an SVG template content from its path
+ * Load an SVG template content from its path.
+ * The path is already correctly prefixed by BASE_URL when the template object was created.
  * @param {string} templateId - The ID of the template to load
  * @returns {Promise<string|null>} Promise resolving to the SVG content or null if not found
  */
 const loadTemplateContent = async (templateId) => {
   try {
     const template = getTemplateById(templateId);
-    if (!template) return null;
+    if (!template) {
+      console.warn(`Template with ID "${templateId}" not found in SVGTemplates.jsx`);
+      return null;
+    }
     
+    // template.path já está prefixado corretamente por buildAssetPath
     const response = await fetch(template.path);
-    if (!response.ok) throw new Error(`Failed to load template: ${response.statusText}`);
+    if (!response.ok) {
+      // Log mais detalhado do erro
+      console.error(`Failed to load template SVG from ${template.path}. Status: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to load template: ${response.statusText}`);
+    }
     
     return await response.text();
   } catch (error) {
-    console.error('Error loading SVG template:', error);
+    console.error(`Error loading SVG template content for ID "${templateId}":`, error);
     return null;
   }
 };

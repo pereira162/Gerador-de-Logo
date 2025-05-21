@@ -12,7 +12,7 @@ function App() {
   
   // Load fonts when app starts
   useEffect(() => {
-    fontManager.loadFonts().catch(err => {
+    fontManager.initialize().catch(err => {
       console.error('Error loading fonts:', err);
     });
   }, []);

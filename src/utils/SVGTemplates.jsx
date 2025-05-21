@@ -293,14 +293,25 @@ export const SVGTemplates = {
 };
 
 export const availableSVGTemplates = [
-  { id: "circle", name: "Circle (Unity)" },
-  { id: "square", name: "Square (Stability)" },
-  { id: "triangle", name: "Triangle (Direction)" },
-  { id: "hexagon", name: "Hexagon (Efficiency)" },
-  { id: "spiral", name: "Spiral (Growth)" },
-  { id: "grid", name: "Grid (Organization)" },
-  { id: "lines", name: "Lines (Connectivity)" },
-  { id: "curve", name: "Curve (Adaptation)" },
-  { id: "fractal", name: "Fractal (Scalability)" },
-  { id: "biomorf", name: "Biomorfic (Natural-Tech Balance)" }
+  {
+    id: 'circle-icon', 
+    name: 'Círculo Simples',
+    preview: '/assets/svg-templates/circle-icon.svg',
+    description: 'Um círculo representando unidade e totalidade.',
+  },
+  {
+    id: 'square-icon',
+    name: 'Quadrado Estável',
+    preview: '/assets/svg-templates/square-icon.svg',
+    description: 'Um quadrado simbolizando estabilidade e estrutura.',
+  },
+  // Placeholders para os outros ícones quando forem criados
+  { id: 'triangle', name: 'Triangle (Direction)', preview: null, description: 'Um triângulo simbolizando direção e propósito.' },
+  { id: 'hexagon', name: 'Hexagon (Efficiency)', preview: null, description: 'Um hexágono representando eficiência e interconexão.' },
+  { id: 'spiral', name: 'Spiral (Growth)', preview: null, description: 'Uma espiral simbolizando crescimento e progresso.' },
+  { id: 'grid', name: 'Grid (Organization)', preview: null, description: 'Um grid representando organização e estrutura.' },
+  { id: 'lines', name: 'Lines (Connectivity)', preview: null, description: 'Linhas simbolizando conectividade e redes.' },
+  { id: 'curve', name: 'Curve (Adaptation)', preview: null, description: 'Curvas representando adaptabilidade e fluidez.' },
+  { id: 'fractal', name: 'Fractal (Scalability)', preview: null, description: 'Um fractal simbolizando escalabilidade e complexidade.' },
+  { id: 'biomorf', name: 'Biomorfic (Natural-Tech Balance)', preview: null, description: 'Formas biomórficas balanceando tecnologia e natureza.' }
 ];

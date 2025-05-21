@@ -1,116 +1,143 @@
-import svgManager from './SVGManager';
-import fontManager from './FontManager';
-
+/**
+ * ExportManager.jsx - Serviço para gerenciar a exportação de logos em diferentes formatos
+ */
 class ExportManager {
   constructor() {
-    this.svgManager = svgManager;
-    this.fontManager = fontManager;
+    this.svgDomParser = new DOMParser();
   }
-  
-  // Export logo as SVG
-  async exportSVG(selectedVariants = ['main']) {
-    // Ensure we have an SVG instance
-    if (!this.svgManager.svgInstance) {
-      throw new Error('No SVG loaded for export');
+
+  // Exportar SVG como string
+  exportSVG() {
+    const svgElement = document.querySelector('#editing-canvas svg');
+    
+    if (!svgElement) {
+      console.error('SVG element not found');
+      return null;
     }
     
-    // Get the SVG string
-    const svgString = this.svgManager.toSVGString();
+    // Clonar o SVG para não modificar o original
+    const clonedSvg = svgElement.cloneNode(true);
     
-    // For basic implementation, just return the main SVG
-    // In the future, this would handle multiple variants
-    if (selectedVariants.length === 1 && selectedVariants[0] === 'main') {
-      this.downloadFile(svgString, 'logo.svg', 'image/svg+xml');
-      return true;
+    // Garantir que o viewBox e dimensões estejam corretos
+    clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    if (!clonedSvg.getAttribute('viewBox')) {
+      clonedSvg.setAttribute('viewBox', '0 0 400 400');
     }
     
-    // Advanced implementation would create different versions
-    // For the MVP, we only support the main variant
-    return true;
+    // Remover atributos auxiliares de edição 
+    clonedSvg.querySelectorAll('.selected-element').forEach(el => {
+      el.classList.remove('selected-element');
+      
+      const originalStroke = el.getAttribute('data-original-stroke');
+      if (originalStroke) {
+        el.setAttribute('stroke', originalStroke);
+        el.removeAttribute('data-original-stroke');
+      }
+    });
+    
+    return new XMLSerializer().serializeToString(clonedSvg);
   }
-  
-  // Export logo as PNG
-  async exportPNG(selectedVariants = ['main'], resolution = 1) {
-    // Ensure fonts are loaded first
-    await this.fontManager.waitForFontsLoaded();
+
+  // Exportar como PNG
+  async exportPNG(elements = ['main'], resolution = 1) {
+    const svgString = this.exportSVG(elements);
     
-    // Get SVG string
-    const svgString = this.svgManager.toSVGString();
+    if (!svgString) {
+      return null;
+    }
     
-    // Create canvas with appropriate size
-    const canvas = document.createElement('canvas');
-    canvas.width = 400 * resolution;
-    canvas.height = 400 * resolution;
-    const ctx = canvas.getContext('2d');
-    
-    // Draw SVG on canvas
-    const img = new Image();
-    const svgBlob = new Blob([svgString], {type: 'image/svg+xml'});
-    const url = URL.createObjectURL(svgBlob);
-    
-    return new Promise((resolve) => {
+    // Criar uma imagem a partir do SVG
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
       img.onload = () => {
-        // Draw with resolution scaling
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const pngUrl = canvas.toDataURL('image/png');
-        
-        // Create download link
-        this.downloadFile(pngUrl, 'logo.png', 'image/png', true);
-        
-        // Clean up
+        try {
+          // Criar canvas com resolução adequada
+          const canvas = document.createElement('canvas');
+          const svgWidth = 400;
+          const svgHeight = 400;
+          
+          canvas.width = svgWidth * resolution;
+          canvas.height = svgHeight * resolution;
+          
+          const ctx = canvas.getContext('2d');
+          
+          // Fundo branco (opcional, deixar transparente se não especificado)
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Desenhar a imagem SVG no canvas com escala
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Converter para PNG
+          const pngData = canvas.toDataURL('image/png');
+          
+          // Limpar recursos
+          URL.revokeObjectURL(url);
+          
+          resolve(pngData);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      
+      img.onerror = () => {
         URL.revokeObjectURL(url);
-        resolve(true);
+        reject(new Error('Falha ao carregar a imagem SVG'));
       };
       
       img.src = url;
     });
   }
   
-  // Generate variants of the logo
-  generateVariants(logoState) {
-    // This would create horizontal, vertical, etc. variants
-    // For the MVP, we'll keep it simple
-    const variants = {
-      main: this.svgManager.toSVGString()
-    };
+  // Gerar variantes do logo (P1 feature - implementação básica)
+  generateVariants(project) {
+    const baseColors = [
+      { primary: '#1E88E5', secondary: '#64B5F6', accent: '#FFC107' }, // Azul
+      { primary: '#43A047', secondary: '#81C784', accent: '#FF5722' }, // Verde
+      { primary: '#6D4C41', secondary: '#A1887F', accent: '#FFCA28' }, // Marrom
+      { primary: '#5E35B1', secondary: '#9575CD', accent: '#4DD0E1' }  // Roxo
+    ];
+    
+    // Criar variantes simples com cores diferentes
+    const variants = baseColors.map((colorSet, index) => {
+      return {
+        id: `variant-${index}`,
+        name: `Variante ${index + 1}`,
+        colors: colorSet,
+        // Aqui geraria uma prévia do SVG com as cores aplicadas
+        // Por enquanto, apenas retornamos o conjunto de cores
+      };
+    });
     
     return variants;
   }
   
-  // Helper to download a file
-  downloadFile(content, filename, mimeType, isDataURL = false) {
-    const link = document.createElement('a');
+  // Preparar o logo para publicação/importação em outros sistemas
+  prepareForPublishing(svgString, metadata = {}) {
+    // Adicionar metadados ao SVG
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svgElement = doc.documentElement;
     
-    if (isDataURL) {
-      link.href = content; // Content is already a data URL
-    } else {
-      // Create a blob and object URL
-      const blob = new Blob([content], { type: mimeType });
-      link.href = URL.createObjectURL(blob);
-    }
+    // Adicionar metadados
+    const metadataElement = doc.createElement('metadata');
+    metadataElement.setAttribute('id', 'logo-metadata');
     
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Converter metadados para XML
+    const metadataContent = Object.entries(metadata)
+      .map(([key, value]) => `<meta name="${key}">${value}</meta>`)
+      .join('');
     
-    // Clean up object URL if created
-    if (!isDataURL) {
-      URL.revokeObjectURL(link.href);
-    }
+    metadataElement.innerHTML = metadataContent;
+    svgElement.appendChild(metadataElement);
     
-    return true;
-  }
-  
-  // Create a ZIP package with multiple files
-  // Note: This is a P1 feature, not required for MVP
-  async createZipPackage(files) {
-    // For future implementation
-    console.warn('ZIP packaging is a P1 feature, not implemented in MVP');
-    return false;
+    return new XMLSerializer().serializeToString(svgElement);
   }
 }
 
-// Export a singleton instance
+// Exportar uma instância singleton
 const exportManager = new ExportManager();
 export default exportManager;

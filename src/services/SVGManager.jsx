@@ -1,258 +1,247 @@
-import { SVG } from '@svgdotjs/svg.js';
-
+/**
+ * SVGManager.jsx - Serviço para gerenciar e manipular elementos SVG
+ */
 class SVGManager {
   constructor() {
-    this.parser = new DOMParser();
-    this.svgDocument = null;
-    this.svgInstance = null;
-    this.editableElements = new Map();
-    this.onElementSelectCallback = null;
+    this.svgContainer = null;
+    this.svgElement = null;
+    this.svgNamespace = "http://www.w3.org/2000/svg";
+    this.elementSelectCallback = null;
   }
 
-  // Initialize with SVG content
-  initialize(svgString, containerId) {
-    // Clear any existing SVG
-    if (this.svgInstance) {
-      this.svgInstance.remove();
+  // Inicializar o SVG Manager com conteúdo SVG em um container específico
+  initialize(svgContent, containerId) {
+    this.svgContainer = document.getElementById(containerId);
+    
+    if (!this.svgContainer) {
+      console.error('Container não encontrado:', containerId);
+      return false;
     }
-
-    // Parse SVG string into DOM
-    this.svgDocument = this.parser.parseFromString(svgString, 'image/svg+xml');
     
-    // Create SVG.js instance
-    this.svgInstance = SVG().addTo(`#${containerId}`).size('100%', '100%');
-    this.svgInstance.svg(svgString);
+    // Limpar o container
+    while (this.svgContainer.firstChild) {
+      this.svgContainer.removeChild(this.svgContainer.firstChild);
+    }
     
-    // Get all editable elements and build a map
-    this.editableElements = new Map();
-    this.setupEventHandlers();
+    // Criar parser de DOM para o SVG
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+    this.svgElement = svgDoc.documentElement;
     
-    return this.getElementsMap();
+    // Garantir que o SVG tenha viewBox e dimensões adequadas
+    if (!this.svgElement.getAttribute('viewBox')) {
+      this.svgElement.setAttribute('viewBox', '0 0 400 400');
+    }
+    if (!this.svgElement.getAttribute('width')) {
+      this.svgElement.setAttribute('width', '100%');
+    }
+    if (!this.svgElement.getAttribute('height')) {
+      this.svgElement.setAttribute('height', '100%');
+    }
+    
+    // Adicionar o SVG ao container
+    this.svgContainer.appendChild(this.svgElement);
+    
+    // Configurar eventos para os elementos SVG
+    this._setupEventHandlers();
+    
+    return true;
   }
-  
-  // Set up click handlers for editable elements
-  setupEventHandlers() {
-    const editables = this.svgInstance.find('.editable');
+
+  // Configurar os handlers de eventos para os elementos SVG
+  _setupEventHandlers() {
+    // Selecionar todos os elementos que podem ser manipulados
+    const editableElements = this.svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g');
     
-    editables.each((i, members) => {
-      const el = members[i];
-      
-      // Store element info in map
-      const elementType = el.type;
-      const id = el.attr('id');
-      
-      // Skip if no ID
-      if (!id) return;
-      
-      // Add to map
-      this.editableElements.set(id, {
-        id,
-        type: elementType,
-        fill: el.attr('fill') || 'none',
-        stroke: el.attr('stroke') || 'none',
-        strokeWidth: parseFloat(el.attr('stroke-width')) || 0,
-        opacity: parseFloat(el.attr('opacity')) || 1,
-        transform: {
-          translate: { x: 0, y: 0 },
-          rotate: 0,
-          scale: { x: 1, y: 1 },
-          origin: { x: 0, y: 0 }
-        },
-        original: {
-          fill: el.attr('fill') || 'none',
-          stroke: el.attr('stroke') || 'none',
-          strokeWidth: parseFloat(el.attr('stroke-width')) || 0,
-          transform: {
-            translate: { x: 0, y: 0 },
-            rotate: 0,
-            scale: { x: 1, y: 1 },
-            origin: { x: 0, y: 0 }
-          }
+    editableElements.forEach(element => {
+      // Adicionar evento de clique para seleção
+      element.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const elementId = element.id || element.getAttribute('data-id');
+        
+        if (elementId && this.elementSelectCallback) {
+          this.elementSelectCallback(elementId);
         }
       });
       
-      // Add click handler
-      el.click(() => {
-        if (this.onElementSelectCallback) {
-          this.onElementSelectCallback(id);
-        }
-      });
+      // Adicionar estilo hover para indicar elementos clicáveis
+      element.style.cursor = 'pointer';
     });
     
-    return this.editableElements;
+    // Clicar no SVG (fora dos elementos) deve desselecionar
+    this.svgElement.addEventListener('click', (event) => {
+      if (event.target === this.svgElement && this.elementSelectCallback) {
+        this.elementSelectCallback(null); // Desselecionar
+      }
+    });
   }
-  
-  getElementsMap() {
-    return this.editableElements;
-  }
-  
+
+  // Definir callback para quando um elemento for selecionado
   setElementSelectCallback(callback) {
-    this.onElementSelectCallback = callback;
+    this.elementSelectCallback = callback;
   }
-  
-  // Apply style changes to element
-  applyStyle(elementId, style) {
-    const element = this.svgInstance.find(`#${elementId}`)[0];
-    if (!element) return false;
+
+  // Analisar o SVG e criar um mapa de elementos com suas propriedades
+  async parseSVGElements(svgContent) {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const svgElement = svgDoc.documentElement;
     
-    // Update element with new styles
-    if (style.fill) element.fill(style.fill);
-    if (style.stroke) element.stroke(style.stroke);
-    if (style.strokeWidth !== undefined) element.stroke({ width: style.strokeWidth });
-    if (style.opacity !== undefined) element.opacity(style.opacity);
+    // Encontrar todos os elementos que podem ser editados
+    const editableElements = svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g');
+    const elementMap = new Map();
     
-    // Update our map
-    const elementData = this.editableElements.get(elementId);
-    if (elementData) {
-      if (style.fill) elementData.fill = style.fill;
-      if (style.stroke) elementData.stroke = style.stroke;
-      if (style.strokeWidth !== undefined) elementData.strokeWidth = style.strokeWidth;
-      if (style.opacity !== undefined) elementData.opacity = style.opacity;
-    }
+    editableElements.forEach((element, index) => {
+      // Garantir que cada elemento tenha um ID
+      if (!element.id) {
+        element.id = `element-${index}`;
+      }
+      
+      // Extrair propriedades relevantes
+      const properties = {
+        type: element.tagName,
+        fill: element.getAttribute('fill') || '#000000',
+        stroke: element.getAttribute('stroke') || 'none',
+        strokeWidth: element.getAttribute('stroke-width') ? parseFloat(element.getAttribute('stroke-width')) : 0,
+        opacity: element.getAttribute('opacity') ? parseFloat(element.getAttribute('opacity')) : 1,
+        // Extrair role para uso com paletas de cores
+        role: element.getAttribute('data-role') || null,
+        // Outras propriedades específicas podem ser adicionadas aqui
+      };
+      
+      elementMap.set(element.id, properties);
+    });
     
-    return true;
+    return elementMap;
   }
-  
-  // Apply transformations to element
-  applyTransformation(elementId, transform) {
-    // Find the SVG element and the group that contains it
-    const element = this.svgInstance.find(`#${elementId}`)[0];
-    if (!element) return false;
+
+  // Atualizar propriedade de um elemento
+  updateElementProperty(elementId, property, value) {
+    if (!this.svgElement) return false;
     
-    // Clear any existing transforms
-    element.transform({});
-    
-    // Apply new transformation
-    if (transform.translate) {
-      element.translate(transform.translate.x, transform.translate.y);
+    const element = this.svgElement.getElementById(elementId);
+    if (!element) {
+      console.error('Elemento não encontrado:', elementId);
+      return false;
     }
     
-    if (transform.rotate !== undefined) {
-      const cx = transform.origin ? transform.origin.x : element.cx();
-      const cy = transform.origin ? transform.origin.y : element.cy();
-      element.rotate(transform.rotate, cx, cy);
+    // Mapear propriedades para atributos SVG
+    const attrMap = {
+      fill: 'fill',
+      stroke: 'stroke',
+      strokeWidth: 'stroke-width',
+      opacity: 'opacity',
+      // Outras propriedades podem ser mapeadas aqui
+    };
+    
+    const attr = attrMap[property];
+    if (attr) {
+      element.setAttribute(attr, value);
+      return true;
     }
     
-    if (transform.scale) {
-      element.scale(transform.scale.x, transform.scale.y);
-    }
-    
-    // Update our map
-    const elementData = this.editableElements.get(elementId);
-    if (elementData) {
-      elementData.transform = { ...transform };
-    }
-    
-    return true;
+    return false;
   }
-  
-  // Add text element to the SVG
-  addTextElement(textElement) {
-    const svgText = this.svgInstance.text(textElement.content)
-      .font({
-        family: textElement.fontFamily,
-        size: textElement.fontSize,
-        weight: textElement.fontWeight
-      })
-      .fill(textElement.fill)
-      .id(textElement.id);
+
+  // Adicionar elemento de texto ao SVG
+  addTextElement(textProps) {
+    if (!this.svgElement) return false;
     
-    if (textElement.position) {
-      svgText.move(textElement.position.x, textElement.position.y);
-    }
+    const {
+      id,
+      content,
+      fontFamily = 'Arial',
+      fontSize = 24,
+      fontWeight = '400',
+      fill = '#000000',
+      position = { x: 200, y: 200 },
+      alignment = 'middle'
+    } = textProps;
     
-    if (textElement.alignment === 'center') {
-      svgText.attr('text-anchor', 'middle');
-    } else if (textElement.alignment === 'right') {
-      svgText.attr('text-anchor', 'end');
-    }
+    // Criar elemento de texto SVG
+    const textElement = document.createElementNS(this.svgNamespace, 'text');
+    textElement.setAttribute('id', id);
+    textElement.setAttribute('x', position.x);
+    textElement.setAttribute('y', position.y);
+    textElement.setAttribute('font-family', fontFamily);
+    textElement.setAttribute('font-size', fontSize);
+    textElement.setAttribute('font-weight', fontWeight);
+    textElement.setAttribute('fill', fill);
+    textElement.setAttribute('text-anchor', alignment === 'center' ? 'middle' : alignment);
+    textElement.setAttribute('dominant-baseline', 'middle');
+    textElement.textContent = content;
     
-    if (textElement.letterSpacing) {
-      svgText.attr('letter-spacing', textElement.letterSpacing);
-    }
+    // Adicionar estilo hover para indicar elementos clicáveis
+    textElement.style.cursor = 'pointer';
     
-    // Add to map
-    this.editableElements.set(textElement.id, {
-      id: textElement.id,
-      type: 'text',
-      fill: textElement.fill,
-      stroke: 'none',
-      strokeWidth: 0,
-      opacity: 1,
-      transform: {
-        translate: { x: 0, y: 0 },
-        rotate: 0,
-        scale: { x: 1, y: 1 },
-        origin: { x: 0, y: 0 }
-      },
-      original: {
-        fill: textElement.fill,
-        stroke: 'none',
-        strokeWidth: 0,
-        transform: {
-          translate: { x: 0, y: 0 },
-          rotate: 0,
-          scale: { x: 1, y: 1 },
-          origin: { x: 0, y: 0 }
-        }
+    // Adicionar evento de clique para seleção
+    textElement.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (this.elementSelectCallback) {
+        this.elementSelectCallback(id);
       }
     });
     
-    return textElement.id;
+    // Adicionar ao SVG
+    this.svgElement.appendChild(textElement);
+    
+    return true;
   }
-  
-  // Position text element relative to the logo or specific element
-  positionTextElement(textElement, referenceElement = null) {
-    const textEl = this.svgInstance.find(`#${textElement.id}`)[0];
-    if (!textEl) return false;
+
+  // Atualizar elemento de texto
+  updateTextElement(textId, properties) {
+    if (!this.svgElement) return false;
     
-    let bbox;
-    
-    if (referenceElement) {
-      const refEl = this.svgInstance.find(`#${referenceElement}`)[0];
-      if (refEl) {
-        bbox = refEl.bbox();
-      } else {
-        bbox = this.svgInstance.bbox();
-      }
-    } else {
-      bbox = this.svgInstance.bbox();
+    const textElement = this.svgElement.getElementById(textId);
+    if (!textElement) {
+      console.error('Elemento de texto não encontrado:', textId);
+      return false;
     }
     
-    // Position text based on specified position
-    if (textElement.position === 'below') {
-      textEl.move(bbox.cx, bbox.y2 + 20).attr('text-anchor', 'middle');
-    } else if (textElement.position === 'above') {
-      textEl.move(bbox.cx, bbox.y - 20).attr('text-anchor', 'middle');
-    } else if (textElement.position === 'left') {
-      textEl.move(bbox.x - 10, bbox.cy).attr('text-anchor', 'end');
-    } else if (textElement.position === 'right') {
-      textEl.move(bbox.x2 + 10, bbox.cy).attr('text-anchor', 'start');
-    } else if (textElement.position === 'center') {
-      textEl.move(bbox.cx, bbox.cy).attr('text-anchor', 'middle');
-    } else {
-      // Custom position
-      textEl.move(textElement.position.x, textElement.position.y);
+    // Mapear propriedades para atributos SVG
+    if (properties.content !== undefined) {
+      textElement.textContent = properties.content;
+    }
+    if (properties.fontFamily !== undefined) {
+      textElement.setAttribute('font-family', properties.fontFamily);
+    }
+    if (properties.fontSize !== undefined) {
+      textElement.setAttribute('font-size', properties.fontSize);
+    }
+    if (properties.fontWeight !== undefined) {
+      textElement.setAttribute('font-weight', properties.fontWeight);
+    }
+    if (properties.fill !== undefined) {
+      textElement.setAttribute('fill', properties.fill);
+    }
+    if (properties.position !== undefined) {
+      textElement.setAttribute('x', properties.position.x);
+      textElement.setAttribute('y', properties.position.y);
+    }
+    if (properties.alignment !== undefined) {
+      textElement.setAttribute('text-anchor', properties.alignment === 'center' ? 'middle' : properties.alignment);
     }
     
     return true;
   }
   
-  // Convert SVG to a string
-  toSVGString() {
-    return this.svgInstance.svg();
-  }
-  
-  // Get the bounding box of an element or the entire SVG
-  getBBox(elementId = null) {
-    if (elementId) {
-      const el = this.svgInstance.find(`#${elementId}`)[0];
-      return el ? el.bbox() : null;
-    }
-    return this.svgInstance.bbox();
+  // Obter o conteúdo SVG atual como string
+  getSVGContent() {
+    if (!this.svgElement) return null;
+    
+    // Clonar para não modificar o original
+    const clone = this.svgElement.cloneNode(true);
+    
+    // Limpar classes de seleção
+    const selectedElements = clone.querySelectorAll('.selected-element');
+    selectedElements.forEach(el => {
+      el.classList.remove('selected-element');
+    });
+    
+    return new XMLSerializer().serializeToString(clone);
   }
 }
 
-// Export a singleton instance
+// Exportar uma instância singleton
 const svgManager = new SVGManager();
 export default svgManager;

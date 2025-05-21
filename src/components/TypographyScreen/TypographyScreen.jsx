@@ -1,372 +1,251 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import useLogoStore from '../../store/LogoStore';
 import fontManager from '../../services/FontManager';
-import svgManager from '../../services/SVGManager';
-import colorManager from '../../services/ColorManager';
+import '../../index.css';
 
 const TypographyScreen = () => {
+  const { currentProject, setScreen, addTextElement, updateTextElement } = useLogoStore();
   const [companyName, setCompanyName] = useState('');
   const [tagline, setTagline] = useState('');
-  const [companyNameFont, setCompanyNameFont] = useState('Inter');
-  const [taglineFont, setTaglineFont] = useState('Inter');
-  const [companyNameSize, setCompanyNameSize] = useState(24);
-  const [taglineSize, setTaglineSize] = useState(16);
-  const [companyNameWeight, setCompanyNameWeight] = useState('500');
-  const [taglineWeight, setTaglineWeight] = useState('400');
-  const [namePosition, setNamePosition] = useState('below');
-  const [taglinePosition, setTaglinePosition] = useState('below-name');
-  
-  const { 
-    currentProject, 
-    addTextElement, 
-    updateTextElement, 
-    setScreen 
-  } = useLogoStore(state => ({
-    currentProject: state.currentProject,
-    addTextElement: state.addTextElement,
-    updateTextElement: state.updateTextElement,
-    setScreen: state.setScreen
-  }));
+  const [selectedFont, setSelectedFont] = useState(fontManager.getDefaultFont().family);
+  const [fontWeight, setFontWeight] = useState('400');
+  const [fontSize, setFontSize] = useState(24);
+  const [textColor, setTextColor] = useState('#000000');
 
-  // Available fonts
-  const availableFonts = fontManager.getAvailableFonts();
+  // Obter todas as fontes disponíveis
+  const availableFonts = fontManager.getAllFonts();
   
-  // Load existing text elements if they exist
-  useEffect(() => {
-    // Load fonts
-    fontManager.loadFonts();
+  // Obter pesos de fonte disponíveis para a fonte selecionada
+  const selectedFontObj = fontManager.getFont(selectedFont);
+  const availableWeights = selectedFontObj ? selectedFontObj.weights : ['400', '700'];
+
+  // Manipuladores de eventos
+  const handleAddCompanyName = () => {
+    if (!companyName.trim()) return;
     
-    // Check if we already have text elements
-    const existingCompanyName = currentProject.textElements.find(el => el.type === 'companyName');
-    const existingTagline = currentProject.textElements.find(el => el.type === 'tagline');
+    const companyNameId = currentProject.textElements.find(el => el.type === 'companyName')?.id;
     
-    if (existingCompanyName) {
-      setCompanyName(existingCompanyName.content);
-      setCompanyNameFont(existingCompanyName.fontFamily.split(',')[0]);
-      setCompanyNameSize(existingCompanyName.fontSize);
-      setCompanyNameWeight(existingCompanyName.fontWeight);
-      setNamePosition(existingCompanyName.positionType || 'below');
-    }
-    
-    if (existingTagline) {
-      setTagline(existingTagline.content);
-      setTaglineFont(existingTagline.fontFamily.split(',')[0]);
-      setTaglineSize(existingTagline.fontSize);
-      setTaglineWeight(existingTagline.fontWeight);
-      setTaglinePosition(existingTagline.positionType || 'below-name');
-    }
-    
-  }, [currentProject.textElements]);
-  
-  // Update or add company name text
-  const handleUpdateCompanyName = () => {
-    const existingCompanyName = currentProject.textElements.find(el => el.type === 'companyName');
-    const textColor = colorManager.getContrastColor(currentProject.colorPalette?.primary || '#0B3C5D');
-    
-    // Calculate position based on selection
-    let position;
-    if (namePosition === 'below') {
-      position = { x: 200, y: 350 };
-    } else if (namePosition === 'above') {
-      position = { x: 200, y: 30 };
-    } else if (namePosition === 'left') {
-      position = { x: 30, y: 200 };
-    } else if (namePosition === 'right') {
-      position = { x: 370, y: 200 };
-    }
-    
-    // If company name already exists, update it
-    if (existingCompanyName) {
-      updateTextElement(existingCompanyName.id, {
+    if (companyNameId) {
+      // Atualizar texto existente
+      updateTextElement(companyNameId, {
         content: companyName,
-        fontFamily: `${companyNameFont}, sans-serif`,
-        fontSize: companyNameSize,
-        fontWeight: companyNameWeight,
+        fontFamily: selectedFont,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
         fill: textColor,
-        position,
-        positionType: namePosition
       });
-    } 
-    // Otherwise create new company name
-    else if (companyName) {
+    } else {
+      // Adicionar novo texto
       addTextElement({
         content: companyName,
-        fontFamily: `${companyNameFont}, sans-serif`,
-        fontSize: companyNameSize,
-        fontWeight: companyNameWeight,
+        fontFamily: selectedFont,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
         fill: textColor,
-        position,
-        positionType: namePosition,
+        position: { x: 200, y: 320 }, // Posição abaixo do logo
+        alignment: 'center',
         type: 'companyName',
-        alignment: 'center'
-      });
-    }
-    
-    // Now handle tagline positioning relative to company name
-    updateTagline();
-  };
-  
-  // Update or add tagline text
-  const updateTagline = () => {
-    const existingTagline = currentProject.textElements.find(el => el.type === 'tagline');
-    const textColor = colorManager.getContrastColor(currentProject.colorPalette?.secondary || '#328CC1');
-    
-    // Calculate position based on selection and company name position
-    let position;
-    
-    if (taglinePosition === 'below-name') {
-      if (namePosition === 'below') {
-        position = { x: 200, y: 380 };
-      } else if (namePosition === 'above') {
-        position = { x: 200, y: 60 };
-      } else if (namePosition === 'left') {
-        position = { x: 30, y: 225 };
-      } else if (namePosition === 'right') {
-        position = { x: 370, y: 225 };
-      }
-    } else if (taglinePosition === 'opposite') {
-      if (namePosition === 'below') {
-        position = { x: 200, y: 30 };
-      } else if (namePosition === 'above') {
-        position = { x: 200, y: 350 };
-      } else if (namePosition === 'left') {
-        position = { x: 370, y: 200 };
-      } else if (namePosition === 'right') {
-        position = { x: 30, y: 200 };
-      }
-    }
-    
-    // If tagline already exists, update it
-    if (existingTagline) {
-      updateTextElement(existingTagline.id, {
-        content: tagline,
-        fontFamily: `${taglineFont}, sans-serif`,
-        fontSize: taglineSize,
-        fontWeight: taglineWeight,
-        fill: textColor,
-        position,
-        positionType: taglinePosition
-      });
-    } 
-    // Otherwise create new tagline
-    else if (tagline) {
-      addTextElement({
-        content: tagline,
-        fontFamily: `${taglineFont}, sans-serif`,
-        fontSize: taglineSize,
-        fontWeight: taglineWeight,
-        fill: textColor,
-        position,
-        positionType: taglinePosition,
-        type: 'tagline',
-        alignment: 'center'
       });
     }
   };
 
-  // Update both text elements
-  const handleApplyChanges = () => {
-    handleUpdateCompanyName();
+  const handleAddTagline = () => {
+    if (!tagline.trim()) return;
+    
+    const taglineId = currentProject.textElements.find(el => el.type === 'tagline')?.id;
+    
+    if (taglineId) {
+      // Atualizar texto existente
+      updateTextElement(taglineId, {
+        content: tagline,
+        fontFamily: selectedFont,
+        fontSize: Math.max(fontSize - 6, 10), // Menor que o nome da empresa
+        fontWeight: fontWeight,
+        fill: textColor,
+      });
+    } else {
+      // Adicionar novo texto
+      addTextElement({
+        content: tagline,
+        fontFamily: selectedFont,
+        fontSize: Math.max(fontSize - 6, 10), // Menor que o nome da empresa
+        fontWeight: fontWeight,
+        fill: textColor,
+        position: { x: 200, y: 350 }, // Posição abaixo do nome da empresa
+        alignment: 'center',
+        type: 'tagline',
+      });
+    }
   };
-  
+
+  const handlePreviousClick = () => {
+    setScreen('editor');
+  };
+
+  const handleNextClick = () => {
+    setScreen('export');
+  };
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* Header */}
-      <header className="bg-gray-800 text-white p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">Typography Editor</h1>
-          <div className="space-x-2">
-            <button 
-              onClick={() => setScreen('editor')}
-              className="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded"
-            >
-              Back to Editor
-            </button>
-            <button 
-              onClick={() => setScreen('export')}
-              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded"
-            >
-              Export Logo
-            </button>
-          </div>
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Tipografia</h1>
+        <div className="flex gap-4">
+          <button
+            onClick={handlePreviousClick}
+            className="py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Voltar
+          </button>
+          <button
+            onClick={handleNextClick}
+            className="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Próximo: Exportar
+          </button>
         </div>
-      </header>
-      
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel (Preview) */}
-        <div className="w-2/3 p-8 bg-gray-100 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4">Logo Preview</h2>
-          <div className="flex-1 bg-white rounded-lg shadow-inner border border-gray-200 flex items-center justify-center">
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Área de previsualização */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Prévia</h2>
+          <div 
+            className="border border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center"
+            style={{ 
+              height: '400px',
+              maxWidth: '100%',
+              margin: '0 auto'
+            }}
+          >
             <div 
               id="editing-canvas" 
-              className="w-full max-w-md mx-auto aspect-square"
-            >
-              {/* SVG is rendered here by SVGManager */}
-            </div>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            Preview shows how your company name and tagline will appear with the logo.
+              className="w-full h-full flex items-center justify-center"
+            />
           </div>
         </div>
-        
-        {/* Right Panel (Typography Controls) */}
-        <div className="w-1/3 p-6 border-l border-gray-300 overflow-y-auto">
-          <div className="space-y-6">
-            {/* Company Name */}
-            <div className="pb-6 border-b">
-              <h3 className="text-lg font-semibold mb-4">Company Name</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input 
-                    type="text" 
-                    value={companyName} 
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full border rounded p-2"
-                    placeholder="Enter your company name"
+
+        {/* Painel de edição de tipografia */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Adicionar Texto</h2>
+            
+            <div className="space-y-6">
+              {/* Nome da empresa */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Empresa
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Sua empresa"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              {/* Slogan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Slogan
+                </label>
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  placeholder="Seu slogan aqui"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              {/* Fonte */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fonte
+                </label>
+                <select
+                  value={selectedFont}
+                  onChange={(e) => setSelectedFont(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  {availableFonts.map(font => (
+                    <option key={font.family} value={font.family} style={{ fontFamily: font.family }}>
+                      {font.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Peso da fonte */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Peso da Fonte
+                </label>
+                <select
+                  value={fontWeight}
+                  onChange={(e) => setFontWeight(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  {availableWeights.map(weight => (
+                    <option key={weight} value={weight}>
+                      {weight === '400' ? 'Normal (400)' : 
+                       weight === '700' ? 'Negrito (700)' : `Peso ${weight}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Tamanho da fonte */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tamanho da Fonte: {fontSize}px
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="48"
+                  step="1"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(parseInt(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              
+              {/* Cor do texto */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cor do Texto
+                </label>
+                <div className="flex items-center">
+                  <div 
+                    className="w-8 h-8 rounded mr-2 border border-gray-300" 
+                    style={{ backgroundColor: textColor }}
+                  />
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => setTextColor(e.target.value)}
+                    className="w-full"
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font</label>
-                  <select 
-                    value={companyNameFont} 
-                    onChange={(e) => setCompanyNameFont(e.target.value)}
-                    className="w-full border rounded p-2"
-                  >
-                    {availableFonts.map(font => (
-                      <option key={font.name} value={font.name}>{font.name}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="range" 
-                        min="12" 
-                        max="48" 
-                        value={companyNameSize} 
-                        onChange={(e) => setCompanyNameSize(Number(e.target.value))}
-                        className="w-full mr-2"
-                      />
-                      <span className="w-8 text-center">{companyNameSize}px</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
-                    <select 
-                      value={companyNameWeight} 
-                      onChange={(e) => setCompanyNameWeight(e.target.value)}
-                      className="w-full border rounded p-2"
-                    >
-                      <option value="400">Regular</option>
-                      <option value="500">Medium</option>
-                      <option value="700">Bold</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                  <select 
-                    value={namePosition} 
-                    onChange={(e) => setNamePosition(e.target.value)}
-                    className="w-full border rounded p-2"
-                  >
-                    <option value="below">Below Logo</option>
-                    <option value="above">Above Logo</option>
-                    <option value="left">Left of Logo</option>
-                    <option value="right">Right of Logo</option>
-                  </select>
-                </div>
               </div>
-            </div>
-            
-            {/* Tagline */}
-            <div className="pb-6 border-b">
-              <h3 className="text-lg font-semibold mb-4">Tagline</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
-                  <input 
-                    type="text" 
-                    value={tagline} 
-                    onChange={(e) => setTagline(e.target.value)}
-                    className="w-full border rounded p-2"
-                    placeholder="Enter your tagline"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font</label>
-                  <select 
-                    value={taglineFont} 
-                    onChange={(e) => setTaglineFont(e.target.value)}
-                    className="w-full border rounded p-2"
-                  >
-                    {availableFonts.map(font => (
-                      <option key={font.name} value={font.name}>{font.name}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="range" 
-                        min="8" 
-                        max="32" 
-                        value={taglineSize} 
-                        onChange={(e) => setTaglineSize(Number(e.target.value))}
-                        className="w-full mr-2"
-                      />
-                      <span className="w-8 text-center">{taglineSize}px</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
-                    <select 
-                      value={taglineWeight} 
-                      onChange={(e) => setTaglineWeight(e.target.value)}
-                      className="w-full border rounded p-2"
-                    >
-                      <option value="400">Regular</option>
-                      <option value="500">Medium</option>
-                      <option value="700">Bold</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                  <select 
-                    value={taglinePosition} 
-                    onChange={(e) => setTaglinePosition(e.target.value)}
-                    className="w-full border rounded p-2"
-                  >
-                    <option value="below-name">Near Company Name</option>
-                    <option value="opposite">Opposite Side of Logo</option>
-                  </select>
-                </div>
+              
+              {/* Botões de aplicação */}
+              <div className="flex gap-4">
+                <button
+                  onClick={handleAddCompanyName}
+                  className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Aplicar Nome
+                </button>
+                <button
+                  onClick={handleAddTagline}
+                  className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Aplicar Slogan
+                </button>
               </div>
-            </div>
-            
-            {/* Apply Changes */}
-            <div>
-              <button 
-                onClick={handleApplyChanges}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-              >
-                Apply Typography Changes
-              </button>
             </div>
           </div>
         </div>

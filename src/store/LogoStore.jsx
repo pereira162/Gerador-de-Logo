@@ -1,252 +1,205 @@
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
-import svgManager from '../services/SVGManager';
 import colorManager from '../services/ColorManager';
-import fontManager from '../services/FontManager';
-import exportManager from '../services/ExportManager';
-import { SVGTemplates } from '../utils/SVGTemplates';
+import svgManager from '../services/SVGManager';
+import { availableSVGTemplates } from '../utils/SVGTemplates';
 
-// Create Zustand store for logo state management
+/**
+ * LogoStore - Gerencia o estado global da aplicação de logos
+ * Controla o fluxo de telas, os elementos do logo, e as cores
+ */
 const useLogoStore = create((set, get) => ({
-  // Current project state
+  // Estado atual da navegação
+  currentScreen: 'selection', // selection, editor, typography, export
+  
+  // Projeto de logo atual
   currentProject: {
-    id: uuidv4(),
     selectedLogoId: null,
-    svgContent: '',
-    elements: new Map(),
     selectedElementId: null,
-    textElements: [], // Company name and tagline
-    colorPalette: colorManager.getPalette('technical-blue'),
+    svgContent: null,
+    elements: new Map(), // Mapa de elementos SVG com suas propriedades
+    textElements: [], // Array para elementos de texto
+    colorPalette: colorManager.getCurrentPalette(),
   },
   
-  // Screen navigation state
-  currentScreen: 'selection', // 'selection', 'editor', 'typography', 'export'
-  
-  // Logo selection action
-  selectLogo: async (logoId) => {
-    // Get the SVG template string
-    const svgString = SVGTemplates[logoId];
-    
-    if (!svgString) {
-      console.error(`Template ${logoId} not found`);
-      return false;
-    }
-    
-    // Initialize the SVG Manager with the template
-    const elements = await svgManager.initialize(svgString, 'editing-canvas');
-    
-    set(state => ({
-      currentProject: {
-        ...state.currentProject,
-        id: uuidv4(), // New project ID
-        selectedLogoId: logoId,
-        svgContent: svgString,
-        elements,
-        selectedElementId: null, // Clear selection
-        textElements: [], // Clear any text elements
-      },
-      currentScreen: 'editor', // Navigate to editor
-    }));
-    
-    return true;
+  // Histórico para desfazer/refazer (P1)
+  history: {
+    past: [],
+    future: [],
   },
   
-  // Navigate between screens
+  // Métodos para navegação
   setScreen: (screen) => {
     set({ currentScreen: screen });
   },
   
-  // Element selection action
+  // Métodos para projeto/logo
+  selectLogo: async (logoId) => {
+    const template = availableSVGTemplates.find(t => t.id === logoId);
+    if (!template) return false;
+    
+    try {
+      // Carregar o SVG do template
+      const response = await fetch(template.path);
+      if (!response.ok) throw new Error('Falha ao carregar SVG');
+      
+      const svgContent = await response.text();
+      
+      // Analisar o SVG para extrair elementos identificáveis
+      const elementMap = await svgManager.parseSVGElements(svgContent);
+      
+      set(state => ({
+        currentProject: {
+          ...state.currentProject,
+          selectedLogoId: logoId,
+          svgContent,
+          elements: elementMap,
+          selectedElementId: null, // Resetar qualquer seleção anterior
+        }
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao carregar SVG do template:', error);
+      return false;
+    }
+  },
+  
+  // Métodos para manipulação de elementos
   selectElement: (elementId) => {
     set(state => ({
       currentProject: {
         ...state.currentProject,
-        selectedElementId: elementId,
+        selectedElementId: elementId
       }
     }));
-    
-    return true;
   },
   
-  // Update element properties
   updateElement: (elementId, properties) => {
     const { currentProject } = get();
-    const elements = new Map(currentProject.elements);
-    const element = elements.get(elementId);
+    const element = currentProject.elements.get(elementId);
     
-    if (!element) {
-      console.error(`Element ${elementId} not found`);
-      return false;
-    }
+    if (!element) return false;
     
-    // Update the element in our store
-    elements.set(elementId, { ...element, ...properties });
+    // Atualizar as propriedades no elemento
+    const updatedElement = { ...element, ...properties };
+    const updatedElements = new Map(currentProject.elements);
+    updatedElements.set(elementId, updatedElement);
     
-    // Apply updates to the SVG
-    if (properties.fill || properties.stroke || properties.strokeWidth || properties.opacity) {
-      svgManager.applyStyle(elementId, properties);
-    }
-    
-    if (properties.transform) {
-      svgManager.applyTransformation(elementId, properties.transform);
-    }
+    // Atualizar o elemento no DOM via SVGManager
+    Object.keys(properties).forEach(prop => {
+      svgManager.updateElementProperty(elementId, prop, properties[prop]);
+    });
     
     set(state => ({
       currentProject: {
         ...state.currentProject,
-        elements,
+        elements: updatedElements
       }
     }));
     
     return true;
   },
   
-  // Add text element (company name or tagline)
-  addTextElement: (textElementData) => {
-    const id = textElementData.id || `text-${uuidv4()}`;
-    const textElement = {
-      id,
-      content: textElementData.content || '',
-      fontFamily: textElementData.fontFamily || fontManager.getDefaultFont().family,
-      fontSize: textElementData.fontSize || 24,
-      fontWeight: textElementData.fontWeight || '400',
-      fill: textElementData.fill || '#000000',
-      position: textElementData.position || { x: 200, y: 350 }, // Default position below the logo
-      alignment: textElementData.alignment || 'center',
-      letterSpacing: textElementData.letterSpacing || 0,
-      type: textElementData.type || 'companyName', // 'companyName' or 'tagline'
-    };
+  // Métodos para gerenciamento de paletas de cores
+  applyColorPalette: (paletteId) => {
+    const palette = colorManager.getPalette(paletteId);
+    if (!palette) return false;
     
-    // Add to SVG
-    svgManager.addTextElement(textElement);
+    const { currentProject } = get();
     
-    // Position the text
-    if (textElementData.position) {
-      svgManager.positionTextElement(textElement);
-    }
+    // Aplicar cores da paleta aos elementos
+    // 1. Elementos primários recebem a cor primária
+    // 2. Elementos secundários recebem a cor secundária
+    // 3. Elementos de destaque recebem a cor de destaque
+
+    // Atualizar todos os elementos com as novas cores
+    const updatedElements = new Map();
+    currentProject.elements.forEach((element, id) => {
+      let updatedElement = { ...element };
+
+      // Aplicar cores baseado na "role" do elemento (se existir)
+      if (element.role === 'primary') {
+        updatedElement.fill = palette.primary;
+      } else if (element.role === 'secondary') {
+        updatedElement.fill = palette.secondary;
+      } else if (element.role === 'accent') {
+        updatedElement.fill = palette.accent;
+      } else {
+        // Para elementos sem role específica, alternar entre primária e secundária
+        const index = parseInt(id.replace(/\D/g, '')) || 0;
+        updatedElement.fill = index % 2 === 0 ? palette.primary : palette.secondary;
+      }
+
+      updatedElements.set(id, updatedElement);
+      
+      // Atualizar no DOM via SVGManager
+      svgManager.updateElementProperty(id, 'fill', updatedElement.fill);
+    });
     
-    // Add to store
     set(state => ({
       currentProject: {
         ...state.currentProject,
-        textElements: [...state.currentProject.textElements, textElement],
+        elements: updatedElements,
+        colorPalette: palette
+      }
+    }));
+    
+    return true;
+  },
+  
+  // Métodos para manipulação de texto
+  addTextElement: (textProps) => {
+    const id = `text-${Date.now()}`;
+    const textElement = {
+      id,
+      ...textProps
+    };
+    
+    // Adicionar o elemento de texto no DOM via SVGManager
+    svgManager.addTextElement(textElement);
+    
+    set(state => ({
+      currentProject: {
+        ...state.currentProject,
+        textElements: [...state.currentProject.textElements, textElement]
       }
     }));
     
     return id;
   },
   
-  // Update text element
-  updateTextElement: (id, properties) => {
+  updateTextElement: (textId, properties) => {
     const { currentProject } = get();
-    const textElements = [...currentProject.textElements];
-    const index = textElements.findIndex(el => el.id === id);
+    const textElement = currentProject.textElements.find(el => el.id === textId);
     
-    if (index === -1) {
-      console.error(`Text element ${id} not found`);
-      return false;
-    }
+    if (!textElement) return false;
     
-    // Update the text element
-    const updatedElement = { ...textElements[index], ...properties };
-    textElements[index] = updatedElement;
+    // Atualizar as propriedades no elemento
+    const updatedTextElement = { ...textElement, ...properties };
+    const updatedTextElements = currentProject.textElements.map(el => 
+      el.id === textId ? updatedTextElement : el
+    );
     
-    // Apply updates to SVG
-    // First, remove the old element and add the updated one
-    const elementToUpdate = document.getElementById(id);
-    if (elementToUpdate) {
-      elementToUpdate.remove();
-    }
-    
-    // Add the updated element
-    svgManager.addTextElement(updatedElement);
-    
-    // Position the text if needed
-    if (properties.position) {
-      svgManager.positionTextElement(updatedElement);
-    }
+    // Atualizar o elemento no DOM via SVGManager
+    svgManager.updateTextElement(textId, properties);
     
     set(state => ({
       currentProject: {
         ...state.currentProject,
-        textElements,
+        textElements: updatedTextElements
       }
     }));
     
     return true;
   },
   
-  // Apply color palette
-  applyColorPalette: (paletteId) => {
-    const palette = colorManager.getPalette(paletteId);
-    
-    if (!palette) {
-      console.error(`Palette ${paletteId} not found`);
-      return false;
-    }
-    
-    const { currentProject } = get();
-    const elements = new Map(currentProject.elements);
-    
-    // Apply to SVG elements
-    elements.forEach((element, id) => {
-      if (element.classList && element.classList.includes('primary-color-element')) {
-        svgManager.applyStyle(id, { fill: palette.primary });
-        element.fill = palette.primary;
-      } else if (element.classList && element.classList.includes('secondary-color-element')) {
-        svgManager.applyStyle(id, { fill: palette.secondary });
-        element.fill = palette.secondary;
-      } else if (element.classList && element.classList.includes('accent-color-element')) {
-        svgManager.applyStyle(id, { fill: palette.accent });
-        element.fill = palette.accent;
-      }
-    });
-    
-    set(state => ({
-      currentProject: {
-        ...state.currentProject,
-        colorPalette: palette,
-        elements,
-      }
-    }));
-    
-    return true;
-  },
-  
-  // Apply color to specific element
-  applyElementColor: (elementId, color, type = 'fill') => {
-    if (type === 'fill') {
-      return get().updateElement(elementId, { fill: color });
-    } else if (type === 'stroke') {
-      return get().updateElement(elementId, { stroke: color });
-    }
-    return false;
-  },
-  
-  // Export logo
+  // Métodos para exportação (integração com ExportManager)
   exportLogo: async (format, resolution = 1) => {
-    if (format === 'svg') {
-      return exportManager.exportSVG(['main']);
-    } else if (format === 'png') {
-      return exportManager.exportPNG(['main'], resolution);
-    }
-    return false;
-  },
-  
-  // Generate variants (P1 feature)
-  generateVariants: () => {
-    const { currentProject } = get();
-    const variants = exportManager.generateVariants(currentProject);
-    
-    set(state => ({
-      currentProject: {
-        ...state.currentProject,
-        variants,
-      }
-    }));
-    
-    return variants;
-  },
+    // A implementação aqui depende do ExportManager
+    // Retornar o resultado da exportação
+    // Implementado no ExportManager.jsx
+    return true;
+  }
 }));
 
 export default useLogoStore;

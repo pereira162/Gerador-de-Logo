@@ -16,14 +16,16 @@ const ExportScreen = () => {
   const svgContent = useLogoStore(state => state.currentProject.svgContent);
   const selectedLogoId = useLogoStore(state => state.currentProject.selectedLogoId);
 
-  // Initialize the SVG content in the editing canvas
+  // Initialize the SVG content in the export preview canvas
   useEffect(() => {
     if (!svgContent || !selectedLogoId) return;
     
-    // Initialize the SVG Manager with the current SVG content
-    svgManager.initialize(svgContent, "editing-canvas");
+    const initSVG = async () => {
+      // Initialize the SVG Manager with the current SVG content using a unique ID
+      svgManager.initialize(svgContent, "export-screen-preview-canvas");
+    };
     
-    // Note: We don't need to set SVG content in export manager as it receives it directly in export methods
+    initSVG();
   }, [svgContent, selectedLogoId]);
 
   // Função para exportar o logo
@@ -99,7 +101,7 @@ const ExportScreen = () => {
             }}
           >
             <div 
-              id="editing-canvas" 
+              id="export-screen-preview-canvas" 
               className="w-full h-full flex items-center justify-center"
             />
           </div>

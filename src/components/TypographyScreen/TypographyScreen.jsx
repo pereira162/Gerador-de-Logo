@@ -8,7 +8,7 @@ const TypographyScreen = () => {
   const { currentProject, setScreen, addTextElement, updateTextElement } = useLogoStore();
   const [companyName, setCompanyName] = useState('');
   const [tagline, setTagline] = useState('');
-  const [selectedFont, setSelectedFont] = useState(fontManager.getDefaultFont().family);
+  const [selectedFont, setSelectedFont] = useState(fontManager.getAvailableFonts()[0]?.family || 'Roboto');
   const [fontWeight, setFontWeight] = useState('400');
   const [fontSize, setFontSize] = useState(24);
   const [textColor, setTextColor] = useState('#000000');
@@ -18,18 +18,18 @@ const TypographyScreen = () => {
   const selectedLogoId = useLogoStore(state => state.currentProject.selectedLogoId);
 
   // Obter todas as fontes disponíveis
-  const availableFonts = fontManager.getAllFonts();
+  const availableFonts = fontManager.getAvailableFonts();
   
   // Obter pesos de fonte disponíveis para a fonte selecionada
-  const selectedFontObj = fontManager.getFont(selectedFont);
-  const availableWeights = selectedFontObj ? selectedFontObj.weights : ['400', '700'];
+  const selectedFontObj = fontManager.getFontByFamily(selectedFont);
+  const availableWeights = selectedFontObj ? selectedFontObj.variants : ['400', '700'];
 
   // Initialize the SVG content in the editing canvas
   useEffect(() => {
     if (!svgContent || !selectedLogoId) return;
     
     // Initialize the SVG Manager with the current SVG content
-    svgManager.initialize(svgContent, "editing-canvas");
+    svgManager.initialize(svgContent, "typography-screen-preview-canvas");
     
   }, [svgContent, selectedLogoId]);
 
@@ -133,7 +133,7 @@ const TypographyScreen = () => {
             }}
           >
             <div 
-              id="editing-canvas" 
+              id="typography-screen-preview-canvas" 
               className="w-full h-full flex items-center justify-center"
             />
           </div>

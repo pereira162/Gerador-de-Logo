@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import useLogoStore from '../../store/LogoStore';
 import svgManager from '../../services/SVGManager';
 import colorManager from '../../services/ColorManager';
+import fontManager from '../../services/FontManager';
 import '../../index.css';
 
 const EditorScreen = () => {
@@ -17,8 +18,37 @@ const EditorScreen = () => {
     ? [...currentProject.elements].find(([id]) => id === currentProject.selectedElementId)?.[1]
     : null;
 
-  // Obter paletas de cores disponíveis
-  const availablePalettes = colorManager.getAllPalettes();
+  // Obter paletas de cores disponíveis (transformando o objeto em array para o map)
+  const allColorSchemes = colorManager.getAllColorSchemes();
+  const availablePalettes = Object.keys(allColorSchemes).map(schemeName => ({
+    id: schemeName,
+    name: schemeName.charAt(0).toUpperCase() + schemeName.slice(1), // Capitaliza o nome para exibição
+    // Para o preview na UI, pegamos as cores principais
+    primary: allColorSchemes[schemeName].find(c => c.name === 'Primary')?.hex || '#000000',
+    secondary: allColorSchemes[schemeName].find(c => c.name === 'Secondary')?.hex || '#CCCCCC',
+    accent: allColorSchemes[schemeName].find(c => c.name === 'Accent')?.hex || '#FF0000',
+  }));
+  
+  // Initialize the SVG content in the editing canvas
+  useEffect(() => {
+    const svgContent = currentProject.svgContent;
+    const selectedLogoId = currentProject.selectedLogoId;
+    
+    if (!svgContent || !selectedLogoId) return;
+    
+    // Initialize the SVG Manager with the current SVG content
+    const initSVG = async () => {
+      await fontManager.initialize(); // Ensure fonts are loaded
+      svgManager.initialize(svgContent, "editing-canvas");
+      
+      // Apply highlight if there's a selected element
+      if (currentProject.selectedElementId) {
+        svgManager.highlightSelectedElement(currentProject.selectedElementId);
+      }
+    };
+    
+    initSVG();
+  }, [currentProject.svgContent, currentProject.selectedLogoId, currentProject.selectedElementId]);
   
   // Manipuladores de evento
   const handleElementChange = (property, value) => {

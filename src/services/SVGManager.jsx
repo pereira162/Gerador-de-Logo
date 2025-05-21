@@ -226,6 +226,27 @@ class SVGManager {
     return true;
   }
   
+  // Remover elemento de texto
+  removeTextElement(textId) {
+    if (!this.svgElement) return false;
+    
+    const textElement = this.svgElement.getElementById(textId);
+    if (!textElement) {
+      console.error('Elemento de texto não encontrado para remoção:', textId);
+      return false;
+    }
+    
+    // Remover o elemento do DOM
+    textElement.parentNode.removeChild(textElement);
+    
+    // Se este era o elemento selecionado, limpar a seleção
+    if (this.selectedElement && this.selectedElement.id === textId) {
+      this.selectedElement = null;
+    }
+    
+    return true;
+  }
+  
   // Obter o conteúdo SVG atual como string
   getSVGContent() {
     if (!this.svgElement) return null;
@@ -338,7 +359,7 @@ class SVGManager {
   }
   
   // Obter estilo de um elemento SVG
-  getElementStyle(elementId, property) {
+  getElementStyle(elementId) {
     if (!this.svgElement) return null;
     
     const element = this.svgElement.getElementById(elementId);
@@ -347,8 +368,13 @@ class SVGManager {
       return null;
     }
     
-    // Retornar o valor da propriedade solicitada
-    return element.getAttribute(property);
+    // Retornar objeto com todas as propriedades de estilo relevantes
+    return {
+      fill: element.getAttribute('fill') || '#000000',
+      stroke: element.getAttribute('stroke') || 'none',
+      strokeWidth: element.getAttribute('stroke-width') ? parseFloat(element.getAttribute('stroke-width')) : 0,
+      opacity: element.getAttribute('opacity') ? parseFloat(element.getAttribute('opacity')) : 1
+    };
   }
   
   // Obter transformação de um elemento SVG
@@ -374,21 +400,21 @@ class SVGManager {
     };
     
     // Extrair valores de translate
-    const translateMatch = transformAttr.match(/translate\(([^,]+),\s*([^)]+)\)/);
+    const translateMatch = transformAttr.match(/translate\(\s*([\d.-]+)\s*[,\s]\s*([\d.-]+)\s*\)/);
     if (translateMatch) {
       transformData.translateX = parseFloat(translateMatch[1]);
       transformData.translateY = parseFloat(translateMatch[2]);
     }
     
     // Extrair valores de scale
-    const scaleMatch = transformAttr.match(/scale\(([^,]+),\s*([^)]+)\)/);
+    const scaleMatch = transformAttr.match(/scale\(\s*([\d.-]+)\s*[,\s]\s*([\d.-]+)\s*\)/);
     if (scaleMatch) {
       transformData.scaleX = parseFloat(scaleMatch[1]);
       transformData.scaleY = parseFloat(scaleMatch[2]);
     }
     
-    // Extrair valor de rotação
-    const rotateMatch = transformAttr.match(/rotate\(([^,]+)/);
+    // Extrair valor de rotação - pegando apenas o valor de ângulo, ignorando o centro
+    const rotateMatch = transformAttr.match(/rotate\(\s*([\d.-]+)/);
     if (rotateMatch) {
       transformData.rotation = parseFloat(rotateMatch[1]);
     }

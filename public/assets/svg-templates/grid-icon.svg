@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" preserveAspectRatio="xMidYMid meet">
+  <g id="icon-group-grid" class="transform-group">
+    <defs>
+      <pattern id="gridPattern" width="50" height="50" patternUnits="userSpaceOnUse">
+        <path id="grid-pattern-path" class="editable-stroke secondary-color-element" d="M 50 0 L 0 0 0 50" fill="none" stroke="#E9C46A" stroke-width="2"/>
+      </pattern>
+    </defs>
+    <rect 
+      id="grid-background" 
+      class="editable editable-fill primary-color-element" 
+      width="400" 
+      height="400" 
+      fill="#2A9D8F" 
+    />
+    <rect 
+      id="grid-overlay" 
+      class="editable" 
+      width="400" 
+      height="400" 
+      fill="url(#gridPattern)" 
+      opacity="0.5" 
+    />
+    <circle 
+      id="grid-center-accent" 
+      class="editable editable-fill accent-color-element" 
+      cx="200" 
+      cy="200" 
+      r="30" 
+      fill="#264653" 
+    />
+  </g>
+</svg>

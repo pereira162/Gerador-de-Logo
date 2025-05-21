@@ -1,118 +1,69 @@
+// src/components/SVGPreview.jsx
 import React, { useEffect, useRef } from 'react';
 import useLogoStore from '../store/LogoStore';
 import svgManager from '../services/SVGManager';
-import fontManager from '../services/FontManager';
+import fontManager from '../services/FontManager'; // Ainda necessário para garantir que as fontes sejam carregadas
 
-const SVGPreview = ({ width = 400, height = 400 }) => {
+const SVGPreview = ({ width = 400, height = 400, containerId = 'svg-preview-default' }) => { // Adicionado containerId como prop
   const canvasRef = useRef(null);
-  const { currentProject, selectElement } = useLogoStore();
+  const { currentProject, selectElement } = useLogoStore(state => ({
+      currentProject: state.currentProject,
+      selectElement: state.selectElement,
+  }));
   
-  // Configurar o handler de seleção
+  // Configurar o handler de seleção uma vez
   useEffect(() => {
-    if (canvasRef.current) {
-      // Definir callback para quando um elemento for selecionado no SVG
-      svgManager.setElementSelectCallback((elementId) => {
-        selectElement(elementId);
-      });
-    }
+    // Este useEffect é problemático se svgManager for um singleton e este componente
+    // for montado/desmontado ou usado em múltiplas instâncias.
+    // O callback de seleção talvez devesse ser global ou gerenciado de outra forma
+    // se múltiplos previews precisarem ser interativos. Para P0, um preview principal interativo.
+    svgManager.setElementSelectCallback((elementId) => {
+      selectElement(elementId);
+    });
   }, [selectElement]);
   
-  // Carregar SVG no canvas quando o conteúdo mudar
+  // Carregar/Atualizar SVG no canvas quando o conteúdo ou ID do container mudar
   useEffect(() => {
     const loadSVGContent = async () => {
       if (canvasRef.current && currentProject.svgContent) {
-        // Garantir que as fontes estão carregadas antes de renderizar
-        await fontManager.initialize();
+        await fontManager.initialize(); // Garante que as fontes P0 estão prontas
         
-        // Limpar qualquer conteúdo existente
-        while (canvasRef.current.firstChild) {
-          canvasRef.current.removeChild(canvasRef.current.firstChild);
-        }
-        
-        // Inicializar o SVG Manager com o novo conteúdo
-        svgManager.initialize(currentProject.svgContent, 'editing-canvas');
-        
-        // Renderizar elementos de texto se existirem
-        if (currentProject.textElements && currentProject.textElements.length > 0) {
-          currentProject.textElements.forEach(async (textElement) => {
-            if (textElement.fontFamily) {
-              await fontManager.loadFont(textElement.fontFamily);
+        // Limpar o container específico antes de renderizar
+        const container = document.getElementById(containerId);
+        if (container) {
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
             }
-            svgManager.updateTextElement(textElement.id, textElement);
-          });
+            svgManager.initialize(currentProject.svgContent, containerId);
+            // O highlight é chamado pelo store quando selectedElementId muda
+            if (currentProject.selectedElementId && containerId === 'editing-canvas') { // Só destaca no canvas principal
+                 svgManager.highlightSelectedElement(currentProject.selectedElementId);
+            }
+        } else {
+            console.warn(`SVGPreview: Container com id "${containerId}" não encontrado.`);
         }
-        
-        // Apply any saved transformations
-        if (currentProject.transformations.size > 0) {
-          // Iterate over all transformations and apply them
-          currentProject.transformations.forEach((transform, elementId) => {
-            svgManager.applyTransformation(elementId, {
-              x: transform.translateX,
-              y: transform.translateY,
-              scaleX: transform.scaleX,
-              scaleY: transform.scaleY,
-              rotation: transform.rotation
-            });
-          });
-        }
+
+      } else if (canvasRef.current) { // Limpa se não houver svgContent
+          const container = document.getElementById(containerId);
+          if (container) container.innerHTML = '';
       }
     };
     
     loadSVGContent();
-  }, [currentProject.svgContent, currentProject.textElements]);
-  
-  // Watch for transformation changes
+  }, [currentProject.svgContent, containerId]); // Depende de svgContent e containerId
+
+  // Reaplicar o highlight se o elemento selecionado mudar E este for o canvas principal de edição
   useEffect(() => {
-    if (currentProject.selectedElementId && currentProject.transformations) {
-      const transform = currentProject.transformations.get(currentProject.selectedElementId);
-      if (transform) {
-        svgManager.applyTransformation(currentProject.selectedElementId, {
-          x: transform.translateX,
-          y: transform.translateY,
-          scaleX: transform.scaleX,
-          scaleY: transform.scaleY,
-          rotation: transform.rotation
-        });
-      }
+    if (svgManager.draw && containerId === 'editing-canvas') { // Assume que 'editing-canvas' é o ID do canvas principal
+        svgManager.highlightSelectedElement(currentProject.selectedElementId);
     }
-  }, [currentProject.transformations, currentProject.selectedElementId]);
-  
-  // Destacar o elemento selecionado
-  useEffect(() => {
-    if (currentProject.selectedElementId) {
-      // Encontrar todos os elementos com classe de seleção e remover
-      const selectedElements = document.querySelectorAll('.selected-element');
-      selectedElements.forEach(el => {
-        el.classList.remove('selected-element');
-        // Restaurar o stroke original se necessário
-        const originalStroke = el.getAttribute('data-original-stroke');
-        if (originalStroke) {
-          el.setAttribute('stroke', originalStroke);
-          el.removeAttribute('data-original-stroke');
-        }
-      });
-      
-      // Encontrar o elemento selecionado e adicionar destaque
-      const selectedElement = document.getElementById(currentProject.selectedElementId);
-      if (selectedElement) {
-        selectedElement.classList.add('selected-element');
-        
-        // Armazenar o stroke original e aplicar um novo para indicar seleção
-        const currentStroke = selectedElement.getAttribute('stroke');
-        if (currentStroke) {
-          selectedElement.setAttribute('data-original-stroke', currentStroke);
-        }
-        selectedElement.setAttribute('stroke', '#2563eb');
-        selectedElement.setAttribute('stroke-width', '2');
-      }
-    }
-  }, [currentProject.selectedElementId]);
+  }, [currentProject.selectedElementId, containerId]);
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-800">Prévia do Logo</h2>
-        <p className="text-gray-500 text-sm">Clique em um elemento para editá-lo</p>
+        {containerId === 'editing-canvas' && <p className="text-gray-500 text-sm">Clique em um elemento para editá-lo</p>}
       </div>
       
       <div 
@@ -124,8 +75,9 @@ const SVGPreview = ({ width = 400, height = 400 }) => {
           margin: '0 auto'
         }}
       >
+        {/* O ID do div interno agora é dinâmico */}
         <div 
-          id="editing-canvas" 
+          id={containerId} 
           ref={canvasRef}
           className="w-full h-full flex items-center justify-center"
         />

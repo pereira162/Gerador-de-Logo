@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" preserveAspectRatio="xMidYMid meet">
+  <g id="icon-group-curve" class="transform-group">
+    <path 
+      id="main-curve" 
+      class="editable editable-stroke primary-color-element" 
+      d="M50,300 Q150,100 200,200 T350,100" 
+      fill="none" 
+      stroke="#2A9D8F" 
+      stroke-width="15" 
+      stroke-linecap="round" 
+    />
+    <path 
+      id="secondary-curve" 
+      class="editable editable-stroke secondary-color-element" 
+      d="M50,100 Q150,300 200,200 T350,300" 
+      fill="none" 
+      stroke="#CBD18F" 
+      stroke-width="10" 
+      stroke-linecap="round" 
+      opacity="0.8"
+    />
+  </g>
+</svg>

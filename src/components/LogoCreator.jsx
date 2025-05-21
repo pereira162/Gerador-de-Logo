@@ -1,120 +1,113 @@
+// src/components/LogoCreator.jsx
 import React, { useState, useEffect } from 'react';
 import SVGTemplateSelector from './SVGTemplateSelector';
 import SVGPreview from './SVGPreview';
-import SVGExporter from './SVGExporter';
+import SVGExporter from './SVGExporter'; // Usado na tela de exportação
 import useLogoStore from '../store/LogoStore';
 import colorManager from '../services/ColorManager';
 import fontManager from '../services/FontManager';
 
+// Importar os painéis de edição que podem ter sido separados
+// import PropertiesPanel from './EditorScreen/PropertiesPanel'; // Se você tiver
+// import ColorEditorPanel from './EditorScreen/ColorEditorPanel'; // Se você tiver
+
 const LogoCreator = () => {
-  // Inicializar recursos ao montar o componente
   useEffect(() => {
     const initializeResources = async () => {
       try {
-        // Inicializar o gerenciador de fontes
         await fontManager.initialize();
-        console.log('Fontes carregadas com sucesso');
-        
-        // Inicializar o gerenciador de cores
-        const schemes = colorManager.getAvailableColorSchemes();
-        colorManager.setActiveColorScheme(schemes[0] || 'modern');
-        console.log('Esquemas de cores inicializados:', schemes);
+        // Inicializa com o primeiro esquema ou 'modern'
+        const schemes = colorManager.getAllColorSchemes();
+        const schemeKeys = Object.keys(schemes);
+        colorManager.setActiveColorScheme(schemeKeys.length > 0 ? schemeKeys[0] : 'modern');
       } catch (error) {
         console.error('Erro ao carregar recursos:', error);
       }
     };
-    
     initializeResources();
   }, []);
-  const { currentProject, currentScreen, setScreen, selectElement, updateElement } = useLogoStore();
-  const [colorPicker, setColorPicker] = useState({
-    isOpen: false,
-    elementId: null,
-    propertyType: 'fill', // 'fill' ou 'stroke'
-  });
 
-  // Elementos ativos no editor
-  const selectedElement = currentProject.selectedElementId
-    ? [...currentProject.elements].find(([id]) => id === currentProject.selectedElementId)?.[1]
-    : null;
+  const { 
+    currentProject, 
+    currentScreen, 
+    setScreen, 
+    // selectElement, // A seleção é feita pelo SVGManager e notificada ao store
+    updateElement, // Para estilos
+    updateElementTransform, // Para transformações
+    initElementTransform, // Para inicializar transformações no store
+    addTextElement // Para adicionar texto
+  } = useLogoStore();
 
-  // Initialize transformations for selected element
+  // O estado local do colorPicker pode ser removido se a UI for simplificada ou
+  // se o ColorPicker for um componente mais complexo que gerencia seu próprio estado de abertura.
+  // const [colorPicker, setColorPicker] = useState({ isOpen: false, elementId: null, propertyType: 'fill' });
+
+  // Ler estilos e transformações do store para o elemento selecionado
+  const selectedElementStyles = currentProject.selectedElementId 
+    ? currentProject.currentElementStyles || {} 
+    : {};
+  const selectedElementTransforms = currentProject.selectedElementId
+    ? currentProject.transformations.get(currentProject.selectedElementId) || 
+      { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0 }
+    : { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0 };
+
+
   useEffect(() => {
-    if (currentProject.selectedElementId) {
-      // Ensure element has a transformation entry
-      if (!currentProject.transformations.has(currentProject.selectedElementId)) {
-        useLogoStore.getState().initElementTransform(currentProject.selectedElementId);
-      }
+    if (currentProject.selectedElementId && !currentProject.transformations.has(currentProject.selectedElementId)) {
+      initElementTransform(currentProject.selectedElementId);
     }
-  }, [currentProject.selectedElementId]);
+  }, [currentProject.selectedElementId, currentProject.transformations, initElementTransform]);
 
-  // Gerenciar mudança de valores para o elemento selecionado
-  const handleElementChange = (property, value) => {
+  const handleStyleChange = (property, value) => {
     if (!currentProject.selectedElementId) return;
-
-    let updateData = {};
-    updateData[property] = value;
-    
-    updateElement(currentProject.selectedElementId, updateData);
+    updateElement(currentProject.selectedElementId, { [property]: value });
   };
   
-  // Handle changes to transformation properties
   const handleTransformChange = (property, value) => {
     if (!currentProject.selectedElementId) return;
-    
-    // Create transformation update object
-    const transformUpdate = {};
-    transformUpdate[property] = value;
-    
-    // Apply the transformation update
-    useLogoStore.getState().updateElementTransform(
-      currentProject.selectedElementId,
-      transformUpdate
-    );
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) return; // Evitar passar NaN
+    updateElementTransform(currentProject.selectedElementId, { [property]: numericValue });
   };
   
-  // Reset element transformation to default values
-  const resetElementTransform = () => {
+  const resetElementTransformAndStyle = () => { // Renomeado para clareza P0
     if (!currentProject.selectedElementId) return;
-    
-    // Apply default transformation values
-    useLogoStore.getState().updateElementTransform(
-      currentProject.selectedElementId,
-      {
-        translateX: 0,
-        translateY: 0,
-        scaleX: 1,
-        scaleY: 1,
-        rotation: 0
-      }
-    );
+    // P0: Resetar transformações para o padrão
+    updateElementTransform(currentProject.selectedElementId, {
+      translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0
+    });
+    // P0: Resetar fill para uma cor padrão (ex: cinza)
+    updateElement(currentProject.selectedElementId, { fill: '#CCCCCC' });
+    // Stroke e outros estilos podem ser P1
   };
 
-  // Adicionar texto ao logo
   const handleAddText = () => {
-    const textContent = prompt('Digite o texto para adicionar ao logo:');
-    if (!textContent) return;
+    const textContent = prompt('Digite o nome da empresa (P0):');
+    if (!textContent || !textContent.trim()) return;
 
-    const textElement = {
+    // Para P0, usamos a primeira fonte P0 e cor de texto com contraste
+    const defaultFontP0 = fontManager.getAvailableFonts().find(f => f.name === 'Inter') || fontManager.getAvailableFonts()[0];
+    const textColorP0 = colorManager.getTextColorForBackground(currentProject.colorPalette.primary || '#FFFFFF');
+
+    addTextElement({
       content: textContent,
-      fontFamily: 'Arial',
-      fontSize: 24,
-      fill: '#000000',
-      type: 'companyName'
-    };
-
-    // Adicionar texto no centro do logo
-    useLogoStore.getState().addTextElement(textElement);
+      fontFamily: defaultFontP0.family,
+      fontSize: 32, // Tamanho P0
+      fontWeight: '700', // Peso P0
+      fill: textColorP0,
+      type: 'companyName',
+      position: { x: 200, y: 350 }, // Posição P0 fixa
+      alignment: 'middle' // P0 fixo
+    });
   };
 
-  // Renderizar conteúdo baseado na tela atual
   const renderContent = () => {
     switch (currentScreen) {
       case 'selection':
         return (
           <div className="container mx-auto p-4">
             <h1 className="text-3xl font-bold text-center mb-8">Crie seu Logo Geométrico</h1>
-            <SVGTemplateSelector />
+            <SVGTemplateSelector /> {/* Assume que SVGTemplateSelector foi atualizado para usar os novos SVGTemplates.jsx */}
           </div>
         );
       
@@ -122,235 +115,123 @@ const LogoCreator = () => {
         return (
           <div className="container mx-auto p-4">
             <div className="flex flex-col lg:flex-row gap-6">
-              {/* Área de Preview */}
               <div className="lg:w-1/2">
-                <SVGPreview />
+                {/* Passa um ID único para o container do preview principal */}
+                <SVGPreview containerId="main-editing-canvas-preview" />
                 <div className="mt-4 flex justify-center">
                   <button
                     onClick={handleAddText}
                     className="py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                   >
-                    Adicionar Texto
+                    Adicionar Nome da Empresa (P0)
                   </button>
                 </div>
               </div>
               
-              {/* Área de Edição */}
-              <div className="lg:w-1/2 bg-white p-6 rounded-lg shadow-md">
+              <div className="lg:w-1/2 bg-white p-6 rounded-lg shadow-md overflow-y-auto max-h-[calc(100vh-150px)]">
                 <h2 className="text-2xl font-bold mb-4">Personalizar Elementos</h2>
                 
-                {selectedElement ? (
+                {currentProject.selectedElementId ? (
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-medium mb-2">
-                        Editando: {currentProject.selectedElementId}
+                        Editando: <span className="font-mono text-sm">{currentProject.selectedElementId}</span>
                       </h3>
-                      <div className="border-t border-gray-200 pt-4 grid grid-cols-2 gap-4">
-                        {/* Transformation Controls */}
-                        <div className="col-span-2 pb-4 border-b border-gray-200">
-                          <h4 className="text-md font-medium mb-3">Transformações</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Position Controls */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700">Posição X</label>
-                              <div className="flex items-center">
-                                <input 
-                                  type="range" 
-                                  min="-100" 
-                                  max="100" 
-                                  step="1"
-                                  className="w-full" 
-                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.translateX || 0}
-                                  onChange={(e) => handleTransformChange('translateX', parseFloat(e.target.value))}
-                                />
-                                <span className="ml-2 min-w-[40px] text-center">
-                                  {currentProject.transformations.get(currentProject.selectedElementId)?.translateX || 0}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700">Posição Y</label>
-                              <div className="flex items-center">
-                                <input 
-                                  type="range" 
-                                  min="-100" 
-                                  max="100" 
-                                  step="1"
-                                  className="w-full" 
-                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.translateY || 0}
-                                  onChange={(e) => handleTransformChange('translateY', parseFloat(e.target.value))}
-                                />
-                                <span className="ml-2 min-w-[40px] text-center">
-                                  {currentProject.transformations.get(currentProject.selectedElementId)?.translateY || 0}
-                                </span>
-                              </div>
-                            </div>
-                            {/* Rotation Control */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700">Rotação</label>
-                              <div className="flex items-center">
-                                <input 
-                                  type="range" 
-                                  min="0" 
-                                  max="360" 
-                                  step="1"
-                                  className="w-full" 
-                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.rotation || 0}
-                                  onChange={(e) => handleTransformChange('rotation', parseFloat(e.target.value))}
-                                />
-                                <span className="ml-2 min-w-[40px] text-center">
-                                  {currentProject.transformations.get(currentProject.selectedElementId)?.rotation || 0}°
-                                </span>
-                              </div>
-                            </div>
-                            {/* Scale Control */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700">Escala</label>
-                              <div className="flex items-center">
-                                <input 
-                                  type="range" 
-                                  min="0.5" 
-                                  max="2" 
-                                  step="0.1"
-                                  className="w-full" 
-                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.scaleX || 1}
-                                  onChange={(e) => {
-                                    const value = parseFloat(e.target.value);
-                                    handleTransformChange('scaleX', value);
-                                    handleTransformChange('scaleY', value);
-                                  }}
-                                />
-                                <span className="ml-2 min-w-[40px] text-center">
-                                  {currentProject.transformations.get(currentProject.selectedElementId)?.scaleX || 1}x
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-3 text-right">
-                            <button
-                              onClick={resetElementTransform}
-                              className="text-sm text-blue-600 hover:text-blue-800"
-                            >
-                              Redefinir transformações
-                            </button>
-                          </div>
-                        </div>
-                        {/* Cores */}
-                        <div className="col-span-2 sm:col-span-1">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cor de Preenchimento
-                          </label>
-                          <div className="flex items-center">
-                            <div 
-                              className="w-10 h-10 rounded-md border border-gray-300 cursor-pointer"
-                              style={{ backgroundColor: selectedElement.fill || '#FFFFFF' }}
-                              onClick={() => setColorPicker({ 
-                                isOpen: true, 
-                                elementId: currentProject.selectedElementId, 
-                                propertyType: 'fill' 
-                              })}
-                            />
-                            <input
-                              type="color"
-                              className="ml-2 p-1 w-16"
-                              value={selectedElement.fill || '#FFFFFF'}
-                              onChange={(e) => handleElementChange('fill', e.target.value)}
-                            />
-                            <input 
-                              type="text" 
-                              className="ml-2 p-1 border border-gray-300 rounded text-sm"
-                              value={selectedElement.fill || '#FFFFFF'}
-                              onChange={(e) => handleElementChange('fill', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="col-span-2 sm:col-span-1">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cor de Contorno
-                          </label>
-                          <div className="flex items-center">
-                            <div 
-                              className="w-10 h-10 rounded-md border border-gray-300 cursor-pointer"
-                              style={{ backgroundColor: selectedElement.stroke || '#000000' }}
-                              onClick={() => setColorPicker({
-                                isOpen: true,
-                                elementId: currentProject.selectedElementId,
-                                propertyType: 'stroke'
-                              })}
-                            />
-                            <input
-                              type="color"
-                              className="ml-2 p-1 w-16"
-                              value={selectedElement.stroke || '#000000'}
-                              onChange={(e) => handleElementChange('stroke', e.target.value)}
-                            />
-                            <input 
-                              type="text" 
-                              className="ml-2 p-1 border border-gray-300 rounded text-sm"
-                              value={selectedElement.stroke || '#000000'}
-                              onChange={(e) => handleElementChange('stroke', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Largura do traço */}
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Espessura do Contorno
-                          </label>
-                          <div className="flex items-center">
-                            <input
-                              type="range"
-                              min="0"
-                              max="20"
-                              step="0.5"
-                              className="w-full"
-                              value={selectedElement.strokeWidth || 0}
-                              onChange={(e) => handleElementChange('strokeWidth', parseFloat(e.target.value))}
-                            />
-                            <span className="ml-2 min-w-[40px] text-center">
-                              {selectedElement.strokeWidth || 0}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Opacidade */}
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Opacidade
-                          </label>
-                          <div className="flex items-center">
-                            <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="0.01"
-                              className="w-full"
-                              value={selectedElement.opacity || 1}
-                              onChange={(e) => handleElementChange('opacity', parseFloat(e.target.value))}
-                            />
-                            <span className="ml-2 min-w-[40px] text-center">
-                              {Math.round((selectedElement.opacity || 1) * 100)}%
-                            </span>
-                          </div>
+
+                      {/* Controles de Cor (P0 - Fill) */}
+                      <div className="col-span-2 pb-4 border-b border-gray-200">
+                        <h4 className="text-md font-medium mb-3">Cor de Preenchimento (Fill)</h4>
+                        <div className="flex items-center">
+                           <input
+                            type="color"
+                            className="ml-2 p-0 w-10 h-10 border-0 cursor-pointer" // Estilo para melhor visualização
+                            value={selectedElementStyles.fill || '#CCCCCC'}
+                            onChange={(e) => handleStyleChange('fill', e.target.value)}
+                          />
+                          <input 
+                            type="text" 
+                            className="ml-2 p-1 border border-gray-300 rounded text-sm flex-1"
+                            value={selectedElementStyles.fill || '#CCCCCC'}
+                            onChange={(e) => {
+                                if (/^#[0-9A-F]{6}$/i.test(e.target.value) || /^#[0-9A-F]{3}$/i.test(e.target.value)) {
+                                    handleStyleChange('fill', e.target.value);
+                                }
+                            }}
+                            placeholder="#RRGGBB"
+                          />
                         </div>
                       </div>
+
+                      {/* Controles de Transformação (P0) */}
+                      <div className="col-span-2 pt-4 pb-4 border-b border-gray-200">
+                        <h4 className="text-md font-medium mb-3">Transformações</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Posição X</label>
+                            <input 
+                              type="number" step="1" className="w-full mt-1 p-1 border rounded" 
+                              value={selectedElementTransforms.translateX}
+                              onChange={(e) => handleTransformChange('translateX', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Posição Y</label>
+                            <input 
+                              type="number" step="1" className="w-full mt-1 p-1 border rounded"
+                              value={selectedElementTransforms.translateY}
+                              onChange={(e) => handleTransformChange('translateY', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Escala X</label>
+                            <input 
+                              type="number" min="0.1" max="5" step="0.01" className="w-full mt-1 p-1 border rounded"
+                              value={selectedElementTransforms.scaleX}
+                              onChange={(e) => handleTransformChange('scaleX', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Escala Y</label>
+                            <input 
+                              type="number" min="0.1" max="5" step="0.01" className="w-full mt-1 p-1 border rounded"
+                              value={selectedElementTransforms.scaleY}
+                              onChange={(e) => handleTransformChange('scaleY', e.target.value)} />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Rotação (°)</label>
+                            <input 
+                              type="number" min="0" max="360" step="1" className="w-full mt-1 p-1 border rounded"
+                              value={selectedElementTransforms.rotation}
+                              onChange={(e) => handleTransformChange('rotation', e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="mt-3 text-right">
+                          <button
+                            onClick={resetElementTransformAndStyle}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Redefinir Elemento (P0: Fill e Transform)
+                          </button>
+                        </div>
+                      </div>
+                      {/* Outros Controles de Estilo (Stroke, StrokeWidth, Opacity) são P1/P2 */}
                     </div>
                   </div>
                 ) : (
                   <div className="text-gray-500 text-center py-8">
-                    <p>Selecione um elemento no logo para editá-lo</p>
-                    <p className="text-sm mt-2">Clique em qualquer parte do logo para começar</p>
+                    <p>Selecione um elemento no logo para editá-lo.</p>
                   </div>
                 )}
                 
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <button
-                    onClick={() => setScreen('export')}
-                    className="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    onClick={() => setScreen('typography')} // Mudado para levar à tela de tipografia
+                    className="py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors w-full mb-2"
                   >
-                    Avançar para Exportação
+                    Avançar para Tipografia
+                  </button>
+                  <button
+                    onClick={() => setScreen('export')}
+                    className="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full"
+                  >
+                    Ir para Exportação
                   </button>
                 </div>
               </div>
@@ -358,20 +239,15 @@ const LogoCreator = () => {
           </div>
         );
       
+      case 'typography': // Adicionando case para a tela de tipografia
+        return <TypographyScreen />; // Renderiza o componente TypographyScreen
+
       case 'export':
         return (
           <div className="container mx-auto p-4">
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="lg:w-1/2">
-                <SVGPreview />
-                <div className="mt-4 flex justify-center space-x-4">
-                  <button
-                    onClick={() => setScreen('editor')}
-                    className="py-2 px-4 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-                  >
-                    Voltar para Edição
-                  </button>
-                </div>
+                <SVGPreview containerId="export-screen-preview" /> {/* ID Único */}
               </div>
               <div className="lg:w-1/2">
                 <SVGExporter />
@@ -383,11 +259,8 @@ const LogoCreator = () => {
       default:
         return (
           <div className="text-center py-12">
-            <p>Tela não encontrada. Por favor retorne à seleção de logo.</p>
-            <button
-              onClick={() => setScreen('selection')}
-              className="mt-4 py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
+            <p>Tela não encontrada.</p>
+            <button onClick={() => setScreen('selection')} className="mt-4 py-2 px-4 bg-blue-600 text-white rounded-md">
               Voltar para Seleção
             </button>
           </div>
@@ -399,48 +272,60 @@ const LogoCreator = () => {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="container mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-center">
+          <h1 className="text-3xl font-bold text-center text-gray-800">
             Gerador de Logo Geométrico
           </h1>
-          <div className="flex justify-center mt-4">
-            <div className="inline-flex rounded-md shadow">
+          <nav className="flex justify-center mt-4">
+            <div className="inline-flex rounded-md shadow-sm">
               <button
-                className={`px-4 py-2 ${
-                  currentScreen === 'selection' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                } rounded-l-md`}
+                className={`px-4 py-2 text-sm font-medium rounded-l-md transition-colors
+                  ${currentScreen === 'selection' 
+                    ? 'bg-blue-600 text-white ring-1 ring-blue-700' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-gray-300'}`}
                 onClick={() => setScreen('selection')}
               >
-                Escolher Modelo
+                1. Modelos
               </button>
               <button
-                className={`px-4 py-2 ${
-                  currentScreen === 'editor' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                onClick={() => currentProject.selectedLogoId ? setScreen('editor') : null}
+                className={`px-4 py-2 text-sm font-medium transition-colors
+                  ${currentScreen === 'editor' 
+                    ? 'bg-blue-600 text-white ring-1 ring-blue-700' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-gray-300'}
+                  ${!currentProject.selectedLogoId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => currentProject.selectedLogoId && setScreen('editor')}
                 disabled={!currentProject.selectedLogoId}
               >
-                Editar Logo
+                2. Editor
               </button>
               <button
-                className={`px-4 py-2 ${
-                  currentScreen === 'export' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                } rounded-r-md`}
-                onClick={() => currentProject.selectedLogoId ? setScreen('export') : null}
+                className={`px-4 py-2 text-sm font-medium transition-colors
+                  ${currentScreen === 'typography' 
+                    ? 'bg-blue-600 text-white ring-1 ring-blue-700' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-gray-300'}
+                  ${!currentProject.selectedLogoId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => currentProject.selectedLogoId && setScreen('typography')}
                 disabled={!currentProject.selectedLogoId}
               >
-                Exportar
+                3. Tipografia
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-r-md transition-colors
+                  ${currentScreen === 'export' 
+                    ? 'bg-blue-600 text-white ring-1 ring-blue-700' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-gray-300'}
+                  ${!currentProject.selectedLogoId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => currentProject.selectedLogoId && setScreen('export')}
+                disabled={!currentProject.selectedLogoId}
+              >
+                4. Exportar
               </button>
             </div>
-          </div>
+          </nav>
         </header>
 
-        {renderContent()}
+        <main>
+          {renderContent()}
+        </main>
       </div>
     </div>
   );

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" preserveAspectRatio="xMidYMid meet">
+  <g id="icon-group-spiral" class="transform-group">
+    <path 
+      id="main-spiral" 
+      class="editable editable-stroke primary-color-element" 
+      d="M200,200 C220,200 240,180 240,160 C240,130 210,110 180,110 C140,110 110,140 110,180 C110,230 160,270 220,270 C280,270 320,220 320,160 C320,90 250,40 180,40 C100,40 40,110 40,190 C40,280 110,360 200,360"
+      fill="none" 
+      stroke="#0B3C5D" 
+      stroke-width="10" 
+      stroke-linecap="round" 
+    />
+    <circle 
+      id="spiral-center-dot" 
+      class="editable editable-fill accent-color-element" 
+      cx="200" 
+      cy="200" 
+      r="15" 
+      fill="#D9B310" 
+    />
+  </g>
+</svg>

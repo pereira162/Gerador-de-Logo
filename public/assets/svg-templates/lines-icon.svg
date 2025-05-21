@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" preserveAspectRatio="xMidYMid meet">
+  <g id="icon-group-lines" class="transform-group">
+    <line 
+      id="line1-h" 
+      class="editable editable-stroke primary-color-element" 
+      x1="50" y1="100" x2="350" y2="100" 
+      stroke="#0B3C5D" 
+      stroke-width="12" 
+      stroke-linecap="round" 
+    />
+    <line 
+      id="line2-h" 
+      class="editable editable-stroke secondary-color-element" 
+      x1="50" y1="200" x2="350" y2="200" 
+      stroke="#328CC1" 
+      stroke-width="12" 
+      stroke-linecap="round" 
+    />
+    <line 
+      id="line3-h" 
+      class="editable editable-stroke primary-color-element" 
+      x1="50" y1="300" x2="350" y2="300" 
+      stroke="#0B3C5D" 
+      stroke-width="12" 
+      stroke-linecap="round" 
+    />
+    <circle 
+      id="lines-accent-dot" 
+      class="editable editable-fill accent-color-element" 
+      cx="200" cy="200" r="25" fill="#D9B310" 
+    />
+  </g>
+</svg>

@@ -38,6 +38,16 @@ const LogoCreator = () => {
     ? [...currentProject.elements].find(([id]) => id === currentProject.selectedElementId)?.[1]
     : null;
 
+  // Initialize transformations for selected element
+  useEffect(() => {
+    if (currentProject.selectedElementId) {
+      // Ensure element has a transformation entry
+      if (!currentProject.transformations.has(currentProject.selectedElementId)) {
+        useLogoStore.getState().initElementTransform(currentProject.selectedElementId);
+      }
+    }
+  }, [currentProject.selectedElementId]);
+
   // Gerenciar mudança de valores para o elemento selecionado
   const handleElementChange = (property, value) => {
     if (!currentProject.selectedElementId) return;
@@ -46,6 +56,38 @@ const LogoCreator = () => {
     updateData[property] = value;
     
     updateElement(currentProject.selectedElementId, updateData);
+  };
+  
+  // Handle changes to transformation properties
+  const handleTransformChange = (property, value) => {
+    if (!currentProject.selectedElementId) return;
+    
+    // Create transformation update object
+    const transformUpdate = {};
+    transformUpdate[property] = value;
+    
+    // Apply the transformation update
+    useLogoStore.getState().updateElementTransform(
+      currentProject.selectedElementId,
+      transformUpdate
+    );
+  };
+  
+  // Reset element transformation to default values
+  const resetElementTransform = () => {
+    if (!currentProject.selectedElementId) return;
+    
+    // Apply default transformation values
+    useLogoStore.getState().updateElementTransform(
+      currentProject.selectedElementId,
+      {
+        translateX: 0,
+        translateY: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0
+      }
+    );
   };
 
   // Adicionar texto ao logo
@@ -104,6 +146,95 @@ const LogoCreator = () => {
                         Editando: {currentProject.selectedElementId}
                       </h3>
                       <div className="border-t border-gray-200 pt-4 grid grid-cols-2 gap-4">
+                        {/* Transformation Controls */}
+                        <div className="col-span-2 pb-4 border-b border-gray-200">
+                          <h4 className="text-md font-medium mb-3">Transformações</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Position Controls */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">Posição X</label>
+                              <div className="flex items-center">
+                                <input 
+                                  type="range" 
+                                  min="-100" 
+                                  max="100" 
+                                  step="1"
+                                  className="w-full" 
+                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.translateX || 0}
+                                  onChange={(e) => handleTransformChange('translateX', parseFloat(e.target.value))}
+                                />
+                                <span className="ml-2 min-w-[40px] text-center">
+                                  {currentProject.transformations.get(currentProject.selectedElementId)?.translateX || 0}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">Posição Y</label>
+                              <div className="flex items-center">
+                                <input 
+                                  type="range" 
+                                  min="-100" 
+                                  max="100" 
+                                  step="1"
+                                  className="w-full" 
+                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.translateY || 0}
+                                  onChange={(e) => handleTransformChange('translateY', parseFloat(e.target.value))}
+                                />
+                                <span className="ml-2 min-w-[40px] text-center">
+                                  {currentProject.transformations.get(currentProject.selectedElementId)?.translateY || 0}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Rotation Control */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">Rotação</label>
+                              <div className="flex items-center">
+                                <input 
+                                  type="range" 
+                                  min="0" 
+                                  max="360" 
+                                  step="1"
+                                  className="w-full" 
+                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.rotation || 0}
+                                  onChange={(e) => handleTransformChange('rotation', parseFloat(e.target.value))}
+                                />
+                                <span className="ml-2 min-w-[40px] text-center">
+                                  {currentProject.transformations.get(currentProject.selectedElementId)?.rotation || 0}°
+                                </span>
+                              </div>
+                            </div>
+                            {/* Scale Control */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">Escala</label>
+                              <div className="flex items-center">
+                                <input 
+                                  type="range" 
+                                  min="0.5" 
+                                  max="2" 
+                                  step="0.1"
+                                  className="w-full" 
+                                  value={currentProject.transformations.get(currentProject.selectedElementId)?.scaleX || 1}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    handleTransformChange('scaleX', value);
+                                    handleTransformChange('scaleY', value);
+                                  }}
+                                />
+                                <span className="ml-2 min-w-[40px] text-center">
+                                  {currentProject.transformations.get(currentProject.selectedElementId)?.scaleX || 1}x
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 text-right">
+                            <button
+                              onClick={resetElementTransform}
+                              className="text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Redefinir transformações
+                            </button>
+                          </div>
+                        </div>
                         {/* Cores */}
                         <div className="col-span-2 sm:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-2">

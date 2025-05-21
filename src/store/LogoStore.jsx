@@ -21,6 +21,8 @@ const useLogoStore = create((set, get) => ({
     elements: new Map(), // Mapa de elementos SVG com suas propriedades
     textElements: [], // Array para elementos de texto
     colorPalette: colorManager.getCurrentPalette(),
+    // Adicionar transformações por elemento
+    transformations: new Map(), // Mapa de transformações por elemento ID
   },
   
   // Histórico para desfazer/refazer (P1)
@@ -77,12 +79,81 @@ const useLogoStore = create((set, get) => ({
   
   // Métodos para manipulação de elementos
   selectElement: (elementId) => {
+    // Highlight the selected element in the SVG
+    svgManager.highlightSelectedElement(elementId);
+    
     set(state => ({
       currentProject: {
         ...state.currentProject,
         selectedElementId: elementId
       }
     }));
+  },
+  
+  // Initialize transformations for an element
+  initElementTransform: (elementId) => {
+    const { currentProject } = get();
+    
+    // If transformation already exists, don't create a new one
+    if (currentProject.transformations.has(elementId)) return;
+    
+    // Default transformation values
+    const defaultTransform = {
+      translateX: 0,
+      translateY: 0,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0,
+    };
+    
+    // Update the transformations map
+    const updatedTransformations = new Map(currentProject.transformations);
+    updatedTransformations.set(elementId, defaultTransform);
+    
+    set(state => ({
+      currentProject: {
+        ...state.currentProject,
+        transformations: updatedTransformations
+      }
+    }));
+  },
+  
+  // Update transformation for an element
+  updateElementTransform: (elementId, transformProps) => {
+    const { currentProject } = get();
+    let elementTransform = currentProject.transformations.get(elementId) || {
+      translateX: 0, 
+      translateY: 0,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0
+    };
+    
+    // Update with new transformation values
+    elementTransform = { ...elementTransform, ...transformProps };
+    
+    // Create updated transformations map
+    const updatedTransformations = new Map(currentProject.transformations);
+    updatedTransformations.set(elementId, elementTransform);
+    
+    // Apply transformation to the SVG element
+    svgManager.applyTransformation(elementId, {
+      x: elementTransform.translateX,
+      y: elementTransform.translateY,
+      scaleX: elementTransform.scaleX,
+      scaleY: elementTransform.scaleY,
+      rotation: elementTransform.rotation
+    });
+    
+    // Update state
+    set(state => ({
+      currentProject: {
+        ...state.currentProject,
+        transformations: updatedTransformations
+      }
+    }));
+    
+    return true;
   },
   
   updateElement: (elementId, properties) => {
@@ -96,9 +167,24 @@ const useLogoStore = create((set, get) => ({
     const updatedElements = new Map(currentProject.elements);
     updatedElements.set(elementId, updatedElement);
     
-    // Atualizar o elemento no DOM via SVGManager
-    Object.keys(properties).forEach(prop => {
-      svgManager.updateElementProperty(elementId, prop, properties[prop]);
+    // Filter style properties vs. other properties
+    const styleProps = {};
+    if (properties.fill !== undefined) styleProps.fill = properties.fill;
+    if (properties.stroke !== undefined) styleProps.stroke = properties.stroke;
+    if (properties.strokeWidth !== undefined) styleProps.strokeWidth = properties.strokeWidth;
+    if (properties.opacity !== undefined) styleProps.opacity = properties.opacity;
+    
+    // Apply style changes via SVGManager if there are style props
+    if (Object.keys(styleProps).length > 0) {
+      svgManager.applyStyle(elementId, styleProps);
+    }
+    
+    // Update other properties using the old method
+    const otherProps = { ...properties };
+    ["fill", "stroke", "strokeWidth", "opacity"].forEach(prop => delete otherProps[prop]);
+    
+    Object.keys(otherProps).forEach(prop => {
+      svgManager.updateElementProperty(elementId, prop, otherProps[prop]);
     });
     
     set(state => ({
@@ -109,7 +195,7 @@ const useLogoStore = create((set, get) => ({
     }));
     
     return true;
-  },
+  }
   
   // Métodos para gerenciamento de paletas de cores
   applyColorPalette: (paletteId) => {

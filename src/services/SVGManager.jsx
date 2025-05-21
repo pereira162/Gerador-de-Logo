@@ -7,6 +7,7 @@ class SVGManager {
     this.svgElement = null;
     this.svgNamespace = "http://www.w3.org/2000/svg";
     this.elementSelectCallback = null;
+    this.selectedElement = null;
   }
 
   // Inicializar o SVG Manager com conteúdo SVG em um container específico
@@ -239,6 +240,183 @@ class SVGManager {
     });
     
     return new XMLSerializer().serializeToString(clone);
+  }
+  
+  // Aplicar estilo a um elemento SVG
+  applyStyle(elementId, styles) {
+    if (!this.svgElement) return false;
+    
+    const element = this.svgElement.getElementById(elementId);
+    if (!element) {
+      console.error('Elemento não encontrado:', elementId);
+      return false;
+    }
+    
+    // Aplicar os estilos ao elemento
+    if (styles.fill !== undefined) {
+      element.setAttribute('fill', styles.fill);
+    }
+    
+    if (styles.stroke !== undefined) {
+      element.setAttribute('stroke', styles.stroke);
+    }
+    
+    if (styles.strokeWidth !== undefined) {
+      element.setAttribute('stroke-width', styles.strokeWidth);
+    }
+    
+    if (styles.opacity !== undefined) {
+      element.setAttribute('opacity', styles.opacity);
+    }
+    
+    return true;
+  }
+  
+  // Aplicar transformações a um elemento SVG
+  applyTransformation(elementId, transformData) {
+    if (!this.svgElement) return false;
+    
+    const element = this.svgElement.getElementById(elementId);
+    if (!element) {
+      console.error('Elemento não encontrado:', elementId);
+      return false;
+    }
+    
+    // Extrair valores de transformação ou usar valores padrão
+    const {
+      x = 0,
+      y = 0,
+      rotation = 0,
+      scaleX = 1,
+      scaleY = 1
+    } = transformData;
+    
+    // Determinar o centro do elemento para rotação
+    let centerX = 0;
+    let centerY = 0;
+    
+    // Para formas diferentes, determinar o centro de rotação
+    if (element.tagName === 'rect') {
+      // Para retângulos, usar o centro do retângulo
+      const width = parseFloat(element.getAttribute('width') || 0);
+      const height = parseFloat(element.getAttribute('height') || 0);
+      centerX = width / 2;
+      centerY = height / 2;
+    } else if (element.tagName === 'circle') {
+      // Para círculos, usar o centro definido pelos atributos cx e cy
+      centerX = parseFloat(element.getAttribute('cx') || 0);
+      centerY = parseFloat(element.getAttribute('cy') || 0);
+    } else if (element.tagName === 'ellipse') {
+      // Para elipses, usar o centro definido pelos atributos cx e cy
+      centerX = parseFloat(element.getAttribute('cx') || 0);
+      centerY = parseFloat(element.getAttribute('cy') || 0);
+    } else if (element.tagName === 'path' || element.tagName === 'g') {
+      // Para paths e grupos, calcular o centro pelo BBox
+      try {
+        const bbox = element.getBBox();
+        centerX = bbox.x + bbox.width / 2;
+        centerY = bbox.y + bbox.height / 2;
+      } catch (e) {
+        console.warn('Não foi possível calcular o BBox para', element.tagName);
+        // Fallback para o centro do SVG
+        centerX = 200;
+        centerY = 200;
+      }
+    } else {
+      // Fallback para elementos não suportados
+      centerX = 200;
+      centerY = 200;
+    }
+    
+    // Construir a string de transformação SVG
+    const transformString = `translate(${x}, ${y}) rotate(${rotation}, ${centerX}, ${centerY}) scale(${scaleX}, ${scaleY})`;
+    
+    // Aplicar a transformação ao elemento
+    element.setAttribute('transform', transformString);
+    
+    return true;
+  }
+  
+  // Obter estilo de um elemento SVG
+  getElementStyle(elementId, property) {
+    if (!this.svgElement) return null;
+    
+    const element = this.svgElement.getElementById(elementId);
+    if (!element) {
+      console.error('Elemento não encontrado:', elementId);
+      return null;
+    }
+    
+    // Retornar o valor da propriedade solicitada
+    return element.getAttribute(property);
+  }
+  
+  // Obter transformação de um elemento SVG
+  getElementTransform(elementId) {
+    if (!this.svgElement) return null;
+    
+    const element = this.svgElement.getElementById(elementId);
+    if (!element) {
+      console.error('Elemento não encontrado:', elementId);
+      return null;
+    }
+    
+    // Obter o atributo de transformação
+    const transformAttr = element.getAttribute('transform') || '';
+    
+    // Valores padrão se não houver transformação
+    const transformData = {
+      translateX: 0,
+      translateY: 0,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0
+    };
+    
+    // Extrair valores de translate
+    const translateMatch = transformAttr.match(/translate\(([^,]+),\s*([^)]+)\)/);
+    if (translateMatch) {
+      transformData.translateX = parseFloat(translateMatch[1]);
+      transformData.translateY = parseFloat(translateMatch[2]);
+    }
+    
+    // Extrair valores de scale
+    const scaleMatch = transformAttr.match(/scale\(([^,]+),\s*([^)]+)\)/);
+    if (scaleMatch) {
+      transformData.scaleX = parseFloat(scaleMatch[1]);
+      transformData.scaleY = parseFloat(scaleMatch[2]);
+    }
+    
+    // Extrair valor de rotação
+    const rotateMatch = transformAttr.match(/rotate\(([^,]+)/);
+    if (rotateMatch) {
+      transformData.rotation = parseFloat(rotateMatch[1]);
+    }
+    
+    return transformData;
+  }
+  
+  // Destacar elemento selecionado
+  highlightSelectedElement(elementId) {
+    if (!this.svgElement) return false;
+    
+    // Remover destaque anterior
+    if (this.selectedElement) {
+      this.selectedElement.classList.remove('selected-highlight');
+    }
+    
+    // Se um novo elemento foi selecionado
+    if (elementId) {
+      const element = this.svgElement.getElementById(elementId);
+      if (element) {
+        element.classList.add('selected-highlight');
+        this.selectedElement = element;
+      }
+    } else {
+      this.selectedElement = null;
+    }
+    
+    return true;
   }
 }
 

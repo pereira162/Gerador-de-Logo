@@ -41,11 +41,41 @@ const SVGPreview = ({ width = 400, height = 400 }) => {
             svgManager.updateTextElement(textElement.id, textElement);
           });
         }
+        
+        // Apply any saved transformations
+        if (currentProject.transformations.size > 0) {
+          // Iterate over all transformations and apply them
+          currentProject.transformations.forEach((transform, elementId) => {
+            svgManager.applyTransformation(elementId, {
+              x: transform.translateX,
+              y: transform.translateY,
+              scaleX: transform.scaleX,
+              scaleY: transform.scaleY,
+              rotation: transform.rotation
+            });
+          });
+        }
       }
     };
     
     loadSVGContent();
   }, [currentProject.svgContent, currentProject.textElements]);
+  
+  // Watch for transformation changes
+  useEffect(() => {
+    if (currentProject.selectedElementId && currentProject.transformations) {
+      const transform = currentProject.transformations.get(currentProject.selectedElementId);
+      if (transform) {
+        svgManager.applyTransformation(currentProject.selectedElementId, {
+          x: transform.translateX,
+          y: transform.translateY,
+          scaleX: transform.scaleX,
+          scaleY: transform.scaleY,
+          rotation: transform.rotation
+        });
+      }
+    }
+  }, [currentProject.transformations, currentProject.selectedElementId]);
   
   // Destacar o elemento selecionado
   useEffect(() => {

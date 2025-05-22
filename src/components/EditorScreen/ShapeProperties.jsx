@@ -28,6 +28,16 @@ const ShapeProperties = ({
       onStyleChange('opacity', numValue);
     }
   };
+  
+  // Handle color change
+  const handleColorChange = (property, color) => {
+    onStyleChange(property, color);
+  };
+
+  // Handle transform change
+  const handleTransformChange = (property, value) => {
+    onTransformChange(property, value);
+  };
 
   return (
     <div className="space-y-4">
@@ -41,7 +51,7 @@ const ShapeProperties = ({
         {element.fill !== undefined && (
           <ColorPicker
             color={element.fill}
-            onChange={(color) => onStyleChange('fill', color)}
+            onChange={(color) => handleColorChange('fill', color)}
             label="Fill Color"
             allowNone={true}
           />
@@ -51,7 +61,7 @@ const ShapeProperties = ({
         {element.stroke !== undefined && (
           <ColorPicker
             color={element.stroke}
-            onChange={(color) => onStyleChange('stroke', color)}
+            onChange={(color) => handleColorChange('stroke', color)}
             label="Stroke Color"
             allowNone={true}
           />
@@ -101,8 +111,16 @@ const ShapeProperties = ({
       {/* Transformation Controls */}
       <div className="border-t pt-4">
         <TransformControls 
-          transform={transform}
-          onChange={onTransformChange}
+          transform={transform || {
+            translateX: 0,
+            translateY: 0,
+            rotation: 0,
+            scaleX: 1,
+            scaleY: 1
+          }}
+          onChange={handleTransformChange}
+          showRotation={true}
+          showScale={true}
         />
       </div>
 

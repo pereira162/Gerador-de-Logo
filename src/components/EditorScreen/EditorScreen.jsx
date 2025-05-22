@@ -3,6 +3,7 @@ import useLogoStore from '../../store/LogoStore';
 import svgManager from '../../services/SVGManager';
 import colorManager from '../../services/ColorManager';
 import fontManager from '../../services/FontManager';
+import PropertiesPanel from './PropertiesPanel';
 import '../../index.css';
 
 const EditorScreen = () => {
@@ -133,91 +134,10 @@ const EditorScreen = () => {
             </div>
           </div>
 
-          {/* Editor de elementos */}
+          {/* Properties Panel */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Editar Elemento</h2>
-            
-            {selectedElement ? (
-              <div className="space-y-4">
-                <p className="text-sm font-medium text-gray-700">
-                  Selecionado: {currentProject.selectedElementId}
-                </p>
-                
-                {/* Cor de preenchimento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cor de Preenchimento
-                  </label>
-                  <div className="flex items-center">
-                    <div 
-                      className="w-8 h-8 rounded mr-2 border border-gray-300" 
-                      style={{ backgroundColor: selectedElement.fill || 'transparent' }}
-                    />
-                    <input
-                      type="color"
-                      value={selectedElement.fill || '#000000'}
-                      onChange={(e) => handleElementChange('fill', e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-                
-                {/* Cor de contorno */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cor de Contorno
-                  </label>
-                  <div className="flex items-center">
-                    <div 
-                      className="w-8 h-8 rounded mr-2 border border-gray-300" 
-                      style={{ backgroundColor: selectedElement.stroke || 'transparent' }}
-                    />
-                    <input
-                      type="color"
-                      value={selectedElement.stroke || '#000000'}
-                      onChange={(e) => handleElementChange('stroke', e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-                
-                {/* Espessura do contorno */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Espessura do Contorno: {selectedElement.strokeWidth || 0}px
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    step="0.5"
-                    value={selectedElement.strokeWidth || 0}
-                    onChange={(e) => handleElementChange('strokeWidth', parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Opacidade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Opacidade: {Math.round((selectedElement.opacity || 1) * 100)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={selectedElement.opacity || 1}
-                    onChange={(e) => handleElementChange('opacity', parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-6">
-                Clique em um elemento do logo para editá-lo
-              </p>
-            )}
+            <PropertiesPanel />
           </div>
         </div>
       </div>

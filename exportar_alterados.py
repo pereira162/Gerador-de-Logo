@@ -1,5 +1,6 @@
 import subprocess
 from datetime import datetime
+import os
 
 IGNORAR = {"exportar_alterados.py","/workspaces/Gerador-de-Logo/ARQUIVOS","atualizar_repositorio.py"}
 
@@ -36,6 +37,24 @@ with open(nome_arquivo, "w", encoding="utf-8") as out:
     out.write("Mapeamento de arquivos alterados/adicionados:\n")
     out.write("\n".join(mapeamento))
     out.write("\n\n")
+
+    # Novo: Mapa de todos os arquivos com pastas e subpastas
+    out.write("Mapeamento completo de arquivos (com pastas e subpastas):\n")
+    all_files = []
+    IGNORAR_PASTAS = {".git", "dist", "ARQUIVOS", ".github", "node_modules"}
+    for root, dirs, files in os.walk("."):
+        # Remove as pastas a serem ignoradas da lista de diretórios
+        dirs[:] = [d for d in dirs if d not in IGNORAR_PASTAS]
+        for file in files:
+            caminho = os.path.join(root, file)
+            # Remove o './' do início para ficar mais limpo
+            if caminho.startswith("./"):
+                caminho = caminho[2:]
+            all_files.append(caminho)
+    for idx, caminho in enumerate(sorted(all_files), 1):
+        out.write(f"{idx}. {caminho}\n")
+    out.write("\n\n")
+
     for idx, arquivo in enumerate(arquivos, 1):
         out.write(f"--- [{idx}] {arquivo} ---\n")
         try:

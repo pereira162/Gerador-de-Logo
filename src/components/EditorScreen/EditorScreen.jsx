@@ -107,6 +107,7 @@ const EditorScreen = () => {
             <div 
               id="editing-canvas" 
               className="w-full h-full flex items-center justify-center"
+              onClick={() => selectElement(null)} /* Ensure clicking on empty area deselects */
             />
           </div>
         </div>

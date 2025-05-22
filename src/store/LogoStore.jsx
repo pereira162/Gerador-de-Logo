@@ -71,10 +71,12 @@ const useLogoStore = create((set, get) => ({
 
   selectElement: (elementId) => {
     console.log('LogoStore: Selecting element', elementId);
-    svgManager.highlightSelectedElement(elementId); // SVGManager cuida do visual
+    
+    // First, let's ensure the element is highlighted in the SVG
+    svgManager.highlightSelectedElement(elementId);
     
     if (elementId) {
-      // Lê os estilos e transformações atuais do elemento SVG
+      // Read the current styles and transformations from the SVG element
       const styles = svgManager.getElementStyle(elementId);
       const transforms = svgManager.getElementTransform(elementId);
       
@@ -84,10 +86,13 @@ const useLogoStore = create((set, get) => ({
       const { currentProject } = get();
       const updatedTransformations = new Map(currentProject.transformations);
       
-      // Garantir que temos um objeto de transformação válido
+      // Ensure we have valid transformation object
       const validTransforms = transforms || { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0 };
       updatedTransformations.set(elementId, validTransforms);
-
+      
+      // Check if it's a text element
+      const isTextElement = currentProject.textElements.some(el => el.id === elementId);
+      
       set(state => ({
         currentProject: {
           ...state.currentProject,
@@ -96,14 +101,33 @@ const useLogoStore = create((set, get) => ({
           transformations: updatedTransformations,
         }
       }));
+      
+      // Force re-read of the element's visual state to ensure UI is up to date
+      setTimeout(() => {
+        const freshStyles = svgManager.getElementStyle(elementId);
+        const freshTransforms = svgManager.getElementTransform(elementId);
+        
+        if (freshStyles || freshTransforms) {
+          set(state => ({
+            currentProject: {
+              ...state.currentProject,
+              currentElementStyles: freshStyles || state.currentProject.currentElementStyles,
+              transformations: state.currentProject.transformations.set(
+                elementId, 
+                freshTransforms || state.currentProject.transformations.get(elementId)
+              ),
+            }
+          }));
+        }
+      }, 10);
     } else {
-      // Quando nenhum elemento é selecionado
+      // When no element is selected
       set(state => ({
         currentProject: {
           ...state.currentProject,
           selectedElementId: null,
           currentElementStyles: {},
-          // Mantemos as transformações no Map para uso futuro
+          // We keep transformations in the Map for future use
         }
       }));
     }

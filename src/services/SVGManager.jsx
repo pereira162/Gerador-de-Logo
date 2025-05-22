@@ -110,6 +110,7 @@ class SVGManager {
       // Adicionar evento de clique para seleção
       const clickHandler = (event) => {
         event.stopPropagation();
+        event.preventDefault();
         console.log(`Element clicked: ${element.id}`);
         
         // Destacar visualmente o elemento
@@ -127,6 +128,8 @@ class SVGManager {
       }
       this._eventListeners.get(element).push({ type: 'click', handler: clickHandler });
       
+      // Remover qualquer handler de click anterior para evitar múltiplos registros
+      element.removeEventListener('click', clickHandler);
       element.addEventListener('click', clickHandler);
       
       // Adicionar estilo hover para indicar elementos clicáveis
@@ -142,6 +145,10 @@ class SVGManager {
       const mouseLeaveHandler = () => {
         element.classList.remove('hover-highlight');
       };
+      
+      // Remover handlers anteriores
+      element.removeEventListener('mouseenter', mouseEnterHandler);
+      element.removeEventListener('mouseleave', mouseLeaveHandler);
       
       element.addEventListener('mouseenter', mouseEnterHandler);
       element.addEventListener('mouseleave', mouseLeaveHandler);
@@ -172,6 +179,8 @@ class SVGManager {
     }
     this._eventListeners.get(this.svgElement).push({ type: 'click', handler: svgClickHandler });
     
+    // Remover handler anterior
+    this.svgElement.removeEventListener('click', svgClickHandler);
     this.svgElement.addEventListener('click', svgClickHandler);
   }
 
@@ -553,7 +562,13 @@ class SVGManager {
     
     console.log('Highlighting element:', elementId);
     
-    // Remover destaque anterior
+    // Remover destaque anterior de todos os elementos
+    const allElements = this.svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g, text');
+    allElements.forEach(el => {
+      el.classList.remove('selected-highlight');
+      el.classList.remove('hover-highlight');
+    });
+    
     if (this.selectedElement) {
       console.log('Removing previous highlight from:', this.selectedElement.id);
       this.selectedElement.classList.remove('selected-highlight');
@@ -566,6 +581,15 @@ class SVGManager {
         console.log('Adding highlight to:', elementId);
         element.classList.add('selected-highlight');
         this.selectedElement = element;
+        
+        // Scroll to the element to ensure visibility if applicable
+        if (element && typeof element.scrollIntoView === 'function') {
+          try {
+            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch (e) {
+            console.warn('Could not scroll to selected element', e);
+          }
+        }
       } else {
         console.error('Element not found for highlighting:', elementId);
         this.selectedElement = null;

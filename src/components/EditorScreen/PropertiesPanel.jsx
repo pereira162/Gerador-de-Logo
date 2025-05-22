@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import useLogoStore from '../../store/LogoStore';
 import svgManager from '../../services/SVGManager';
 import ShapeProperties from './ShapeProperties';
@@ -12,10 +12,28 @@ const PropertiesPanel = () => {
     updateTextElement: state.updateTextElement
   }));
   
+  // Local state to ensure properties are refreshed when selection changes
+  const [currentStyles, setCurrentStyles] = useState({});
+  const [currentTransform, setCurrentTransform] = useState(null);
+  
   const { elements, selectedElementId, currentElementStyles, transformations, textElements } = currentProject;
   const selectedElementFromMap = selectedElementId ? elements.get(selectedElementId) : null;
   const selectedTextElement = selectedElementId ? textElements.find(el => el.id === selectedElementId) : null;
   const selectedElementTransform = selectedElementId ? transformations.get(selectedElementId) : null;
+  
+  // Update local state when selection changes
+  useEffect(() => {
+    if (selectedElementId) {
+      const freshStyles = svgManager.getElementStyle(selectedElementId);
+      const freshTransform = svgManager.getElementTransform(selectedElementId);
+      
+      if (freshStyles) setCurrentStyles(freshStyles);
+      if (freshTransform) setCurrentTransform(freshTransform);
+    } else {
+      setCurrentStyles({});
+      setCurrentTransform(null);
+    }
+  }, [selectedElementId]);
   
   // Determine if the selected element is a text element or a shape
   const isTextElement = !!selectedTextElement;
@@ -24,7 +42,13 @@ const PropertiesPanel = () => {
   const selectedElement = selectedElementId && !isTextElement ? {
     ...selectedElementFromMap,
     ...currentElementStyles,
+    ...currentStyles, // Use our refreshed styles from local state
   } : null;
+  
+  // Use our local transform state if available, otherwise fallback to store
+  const effectiveTransform = currentTransform || selectedElementTransform || {
+    translateX: 0, translateY: 0, rotation: 0, scaleX: 1, scaleY: 1
+  };
   
   // Handle style changes for shape elements
   const handleStyleChange = (property, value) => {
@@ -112,7 +136,7 @@ const PropertiesPanel = () => {
         // Render Text Properties Panel
         <TextProperties 
           element={selectedTextElement}
-          transform={selectedElementTransform}
+          transform={effectiveTransform}
           onStyleChange={handleTextPropertyChange}
           onContentChange={handleTextContentChange}
           onTransformChange={handleTransformChange}
@@ -122,7 +146,7 @@ const PropertiesPanel = () => {
         // Render Shape Properties Panel
         <ShapeProperties 
           element={selectedElement}
-          transform={selectedElementTransform}
+          transform={effectiveTransform}
           onStyleChange={handleStyleChange}
           onTransformChange={handleTransformChange}
           onReset={handleReset}

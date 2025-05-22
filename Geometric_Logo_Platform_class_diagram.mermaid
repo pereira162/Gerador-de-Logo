@@ -1,239 +1,182 @@
 classDiagram
     class App {
-        <<Entry Point>>
-        +render()
+        <<component>>
+        +render() ReactNode
     }
-    
-    %% Core State Management
-    class LogoStore {
-        <<State Management>>
-        +LogoProjectState state
-        +selectLogo(logoId)
-        +selectElement(elementId)
-        +updateElement(elementId, properties)
-        +addTextElement(textElement)
-        +updateTextElement(id, properties)
-        +applyColorPalette(palette)
-        +applyElementColor(elementId, color, type)
-        +generateVariants()
-        +exportLogo(format)
-        +undoAction()
-        +redoAction()
+
+    class AppRouter {
+        <<component>>
+        +render() ReactNode
     }
-    
-    %% Data Models
-    class LogoProjectState {
-        <<Model>>
-        +string id
-        +string selectedLogoId
-        +string svgContent
-        +Map~string,LogoElement~ elements
-        +string|null selectedElementId
-        +TextElement[] textElements
-        +ColorPalette colorPalette
-        +HistoryState[] history
-        +Record~string,string~ variants
+
+    class EditorScreen {
+        <<component>>
+        -activeView: string
+        +handleViewChange(view: string): void
+        +render() ReactNode
     }
-    
-    class LogoElement {
-        <<Model>>
-        +string id
-        +string type
-        +string fill
-        +string stroke
-        +number strokeWidth
-        +number opacity
-        +Transform transform
-        +Object original
-    }
-    
-    class TextElement {
-        <<Model>>
-        +string id
-        +string content
-        +string fontFamily
-        +number fontSize
-        +string fontWeight
-        +string fill
-        +Position position
-        +string alignment
-        +number letterSpacing
-        +string type
-    }
-    
-    class Transform {
-        <<Model>>
-        +{x: number, y: number} translate
-        +number rotate
-        +{x: number, y: number} scale
-        +{x: number, y: number} origin
-    }
-    
-    class ColorPalette {
-        <<Model>>
-        +string id
-        +string name
-        +string primary
-        +string secondary
-        +string accent
-        +boolean isCustom
-    }
-    
-    class Position {
-        <<Model>>
-        +number x
-        +number y
-    }
-    
-    %% Service Classes
-    class SVGManager {
-        <<Service>>
-        +DOMParser parser
-        +Object svgDocument
-        +Object svgInstance
-        +initialize(svgString, containerId)
-        +getElementsMap()
-        +applyTransformation(elementId, transformation)
-        +applyStyle(elementId, style)
-        +addTextElement(textElement)
-        +positionTextElement(textElement, referenceElementId)
-        +toSVGString()
-    }
-    
-    class FontManager {
-        <<Service>>
-        +Map~string,FontFace~ fonts
-        +boolean fontsLoaded
-        +loadFonts()
-        +waitForFontsLoaded()
-        +getAvailableFonts()
-        +getDefaultFont()
-    }
-    
-    class ExportManager {
-        <<Service>>
-        +SVGManager svgManager
-        +FontManager fontManager
-        +exportSVG()
-        +exportPNG(resolution)
-        +generateVariants(logoState)
-        +downloadFile(content, filename)
-        +createZipPackage(files)
-    }
-    
-    class ColorManager {
-        <<Service>>
-        +Map~string,ColorPalette~ presetPalettes
-        +getPresetPalettes()
-        +hexToRgb(hex)
-        +rgbToHex(r, g, b)
-        +applyPaletteToElements(elements, palette)
-        +getContrastColor(backgroundColor)
-    }
-    
-    %% UI Components (Container)
-    class LogoSelectionScreen {
-        <<Container>>
-        +onLogoSelect(logoId)
-        +render()
-    }
-    
-    class MainEditorScreen {
-        <<Container>>
-        +LogoStore logoStore
-        +string activeToolId
-        +setActiveTool(toolId)
-        +render()
-    }
-    
-    class TypographyScreen {
-        <<Container>>
-        +LogoStore logoStore
-        +FontManager fontManager
-        +updateTextContent(id, content)
-        +updateTextStyle(id, style)
-        +updateTextPosition(id, position)
-        +render()
-    }
-    
-    class VariantsExportScreen {
-        <<Container>>
-        +LogoStore logoStore
-        +ExportManager exportManager
-        +selectedVariants: string[]
-        +exportFormat: string
-        +resolution: number
-        +toggleVariantSelection(variantId)
-        +setExportFormat(format)
-        +setResolution(value)
-        +exportSelectedVariants()
-        +render()
-    }
-    
-    %% UI Components (Presentation)
+
     class EditingCanvas {
-        <<Component>>
-        +LogoStore logoStore
-        +SVGManager svgManager
-        +handleElementClick(elementId)
-        +handleTransform(elementId, transformData)
-        +render()
+        <<component>>
+        -canvasRef: React.RefObject
+        -svgManager: SVGManager
+        -project: Project
+        -selectedElementId: string | null
+        +componentDidMount(): void
+        +componentDidUpdate(): void
+        +handleSvgClick(elementId: string): void
+        +render() ReactNode
     }
-    
+
     class PropertiesPanel {
-        <<Component>>
-        +LogoStore logoStore
-        +handleStyleChange(property, value)
-        +render()
+        <<component>>
+        -isOpen: boolean
+        -selectedElementId: string | null
+        -selectedElementType: string | null
+        -elementProperties: ElementProperties | null
+        +togglePanel(): void
+        +applyChanges(changes: Partial~ElementProperties~): void
+        +resetProperties(): void
+        +render() ReactNode
     }
-    
-    class ColorEditorPanel {
-        <<Component>>
-        +LogoStore logoStore
-        +ColorManager colorManager
-        +boolean isGlobalMode
-        +setColorMode(isGlobal)
-        +handleColorChange(color, type)
-        +selectPalette(paletteId)
-        +render()
+
+    class ShapeProperties {
+        <<component>>
+        -elementId: string
+        -properties: Partial~ElementProperties~
+        +handleColorChange(colorType: string, value: string): void
+        +handleOpacityChange(value: number): void
+        +handleTransformChange(type: string, value: any): void
+        +resetProperty(property: string): void
+        +render() ReactNode
     }
-    
-    class PreviewPanel {
-        <<Component>>
-        +LogoStore logoStore
-        +string currentPreviewContext
-        +setPreviewContext(context)
-        +render()
+
+    class TextProperties {
+        <<component>>
+        -textElementId: string
+        -textElement: TextElement
+        +handleTextChange(value: string): void
+        +handleFontChange(font: string): void
+        +handleSizeChange(size: number): void
+        +handleStyleChange(style: object): void
+        +handleColorChange(value: string): void
+        +handleAlignmentChange(alignment: string): void
+        +resetProperty(property: string): void
+        +render() ReactNode
     }
-    
-    %% Relationships
-    App --> LogoSelectionScreen
-    App --> MainEditorScreen
-    App --> TypographyScreen
-    App --> VariantsExportScreen
-    
-    LogoStore --> LogoProjectState: manages
-    LogoProjectState --> LogoElement: contains
-    LogoProjectState --> TextElement: contains
-    LogoProjectState --> ColorPalette: uses
-    LogoElement --> Transform: has
-    TextElement --> Position: has
-    
-    MainEditorScreen --> EditingCanvas: contains
-    MainEditorScreen --> PropertiesPanel: contains
-    MainEditorScreen --> ColorEditorPanel: contains
-    MainEditorScreen --> PreviewPanel: contains
-    
-    EditingCanvas --> SVGManager: uses
-    PropertiesPanel --> LogoStore: uses
-    ColorEditorPanel --> ColorManager: uses
-    VariantsExportScreen --> ExportManager: uses
-    TypographyScreen --> FontManager: uses
-    
-    SVGManager ..> LogoElement: manipulates
-    ExportManager --> SVGManager: uses
-    ExportManager --> FontManager: uses
-    LogoStore --> SVGManager: uses
-    LogoStore --> FontManager: uses
-    LogoStore --> ExportManager: uses
-    LogoStore --> ColorManager: uses
+
+    class SVGManager {
+        <<service>>
+        -instance: SVGManager
+        -svgElement: SVGElement | null
+        -svgContainer: HTMLElement | null
+        -elementSelectCallback: function | null
+        -editableElements: Map~string, SVGElement~
+        +getInstance(): SVGManager
+        +initialize(svgContent: string, containerId: string): void
+        +cleanup(): void
+        +setElementSelectCallback(callback: function): void
+        +getElementStyle(elementId: string): object
+        +setElementStyle(elementId: string, styles: object): void
+        +getElementTransform(elementId: string): object
+        +setElementTransform(elementId: string, transform: object): void
+        +highlightElement(elementId: string): void
+        +clearHighlight(): void
+        +addTextElement(textElement: TextElement): string
+        +updateTextElement(id: string, props: object): void
+        +removeTextElement(id: string): void
+        +getSVGContent(): string
+        +rasterize(format: string, scale: number): Promise~string~
+        -_setupEventHandlers(): void
+        -_cleanupEventHandlers(): void
+        -_parseTransform(transformString: string): object
+        -_applyTransform(element: SVGElement, transform: object): void
+    }
+
+    class LogoStore {
+        <<store>>
+        -state: LogoState
+        +getState(): LogoState
+        +setState(partialState: Partial~LogoState~): void
+        +createNewProject(templateId: string): void
+        +loadProject(projectId: string): void
+        +saveProject(): void
+        +selectElement(elementId: string): void
+        +selectTextElement(textElementId: string): void
+        +clearSelection(): void
+        +updateElementStyle(elementId: string, styles: object): void
+        +updateElementTransform(elementId: string, transform: object): void
+        +updateTextElement(id: string, props: object): void
+        +addTextElement(initialProps: object): string
+        +removeTextElement(id: string): void
+        +exportAsSVG(): string
+        +exportAsPNG(): Promise~string~
+        +exportAsJPG(): Promise~string~
+    }
+
+    class UIStore {
+        <<store>>
+        -state: UIState
+        +getState(): UIState
+        +setState(partialState: Partial~UIState~): void
+        +setActiveScreen(screen: string): void
+        +setActiveTab(tab: string): void
+        +togglePropertiesPanel(): void
+        +openTemplateModal(): void
+        +closeTemplateModal(): void
+    }
+
+    class ColorPicker {
+        <<component>>
+        -color: string
+        -onChange: function
+        -label: string
+        +handleChange(color: string): void
+        +render() ReactNode
+    }
+
+    class TransformControls {
+        <<component>>
+        -transform: Transform
+        -onChange: function
+        +handleTranslateChange(axis: string, value: number): void
+        +handleScaleChange(axis: string, value: number): void
+        +handleRotateChange(value: number): void
+        +resetTransform(): void
+        +render() ReactNode
+    }
+
+    class TemplateSelector {
+        <<component>>
+        -templates: Template[]
+        -selectedTemplateId: string | null
+        -onSelect: function
+        +handleTemplateSelect(templateId: string): void
+        +render() ReactNode
+    }
+
+    class ExportPanel {
+        <<component>>
+        -format: string
+        -exportInProgress: boolean
+        +handleFormatChange(format: string): void
+        +handleExport(): Promise~void~
+        +render() ReactNode
+    }
+
+    App --> AppRouter
+    AppRouter --> EditorScreen
+    EditorScreen --> EditingCanvas
+    EditorScreen --> PropertiesPanel
+    PropertiesPanel --> ShapeProperties
+    PropertiesPanel --> TextProperties
+    ShapeProperties --> ColorPicker
+    ShapeProperties --> TransformControls
+    TextProperties --> ColorPicker
+    EditingCanvas ..> SVGManager: uses
+    EditingCanvas ..> LogoStore: uses
+    PropertiesPanel ..> LogoStore: uses
+    PropertiesPanel ..> UIStore: uses
+    EditorScreen ..> UIStore: uses
+    ShapeProperties ..> LogoStore: uses
+    TextProperties ..> LogoStore: uses

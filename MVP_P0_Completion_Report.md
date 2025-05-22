@@ -18,7 +18,7 @@ O MVP P0 implementou com sucesso todas as funcionalidades essenciais definidas n
 
 Além disso, superamos diversos desafios técnicos significativos, incluindo:
 
-- Implementação de um sistema robusto de manipulação SVG usando JavaScript puro
+- Implementação de um sistema robusto de manipulação SVG usando JavaScript puro000
 - Desenvolvimento de um sistema de gerenciamento de estado centralizado usando Zustand
 - Solução dos problemas de renderização SVG em diferentes contextos dentro da aplicação
 - Correção de problemas de identificação de elementos através de IDs de contêiner únicos

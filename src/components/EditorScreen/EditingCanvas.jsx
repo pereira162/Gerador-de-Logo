@@ -15,11 +15,44 @@ const EditingCanvas = () => {
   useEffect(() => {
     if (!canvasRef.current || !selectedLogoId || !svgContent) return;
     
+    console.log('Initializing SVG in EditingCanvas with content:', svgContent.substring(0, 50) + '...');
+    
     // Set the element select callback on the SVG manager
-    svgManager.setElementSelectCallback(selectElement);
+    svgManager.setElementSelectCallback((elementId) => {
+      console.log('SVG element selected:', elementId);
+      selectElement(elementId);
+    });
     
     // Initialize the SVG content in the canvas
-    svgManager.initialize(svgContent, "editing-canvas");
+    const success = svgManager.initialize(svgContent, "editing-canvas");
+    
+    if (!success) {
+      console.error('Failed to initialize SVG manager');
+      return;
+    }
+    
+    // Add CSS for selection highlighting if not already present
+    const styleId = 'svg-editor-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        #editing-canvas svg * {
+          transition: all 0.1s ease;
+        }
+        #editing-canvas .selected-highlight {
+          outline: 3px dashed #2563eb !important;
+          outline-offset: 2px !important;
+        }
+        #editing-canvas .hover-highlight {
+          stroke: #2563eb80 !important;
+          stroke-width: 1px !important;
+          opacity: 0.9 !important;
+          cursor: pointer !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
     
   }, [canvasRef, selectElement, selectedLogoId, svgContent]);
   

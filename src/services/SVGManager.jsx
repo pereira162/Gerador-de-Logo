@@ -94,17 +94,30 @@ class SVGManager {
 
   // Configurar os handlers de eventos para os elementos SVG
   _setupEventHandlers() {
-    // Selecionar todos os elementos que podem ser manipulados
-    const editableElements = this.svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g');
+    console.log('Setting up SVG event handlers');
     
-    editableElements.forEach(element => {
+    // Selecionar todos os elementos que podem ser manipulados
+    const editableElements = this.svgElement.querySelectorAll('path, circle, rect, ellipse, polygon, polyline, g, text');
+    
+    console.log(`Found ${editableElements.length} editable elements`); 
+    
+    editableElements.forEach((element, index) => {
+      // Garantir que cada elemento tenha um ID único
+      if (!element.id) {
+        element.id = `element-${Date.now()}-${index}`;
+      }
+      
       // Adicionar evento de clique para seleção
       const clickHandler = (event) => {
         event.stopPropagation();
-        const elementId = element.id || element.getAttribute('data-id');
+        console.log(`Element clicked: ${element.id}`);
         
-        if (elementId && this.elementSelectCallback) {
-          this.elementSelectCallback(elementId);
+        // Destacar visualmente o elemento
+        this.highlightSelectedElement(element.id);
+        
+        // Chamar o callback se existir
+        if (this.elementSelectCallback) {
+          this.elementSelectCallback(element.id);
         }
       };
       
@@ -115,14 +128,41 @@ class SVGManager {
       this._eventListeners.get(element).push({ type: 'click', handler: clickHandler });
       
       element.addEventListener('click', clickHandler);
+      
       // Adicionar estilo hover para indicar elementos clicáveis
       element.style.cursor = 'pointer';
+      
+      // Adicionar eventos de hover para feedback visual
+      const mouseEnterHandler = () => {
+        if (this.selectedElement !== element) {
+          element.classList.add('hover-highlight');
+        }
+      };
+      
+      const mouseLeaveHandler = () => {
+        element.classList.remove('hover-highlight');
+      };
+      
+      element.addEventListener('mouseenter', mouseEnterHandler);
+      element.addEventListener('mouseleave', mouseLeaveHandler);
+      
+      this._eventListeners.get(element).push(
+        { type: 'mouseenter', handler: mouseEnterHandler },
+        { type: 'mouseleave', handler: mouseLeaveHandler }
+      );
     });
     
     // Clicar no SVG (fora dos elementos) deve desselecionar
     const svgClickHandler = (event) => {
-      if (event.target === this.svgElement && this.elementSelectCallback) {
-        this.elementSelectCallback(null); // Desselecionar
+      if (event.target === this.svgElement) {
+        console.log('Background clicked, clearing selection');
+        
+        // Limpar o destaque visual
+        this.highlightSelectedElement(null);
+        
+        if (this.elementSelectCallback) {
+          this.elementSelectCallback(null); // Desselecionar
+        }
       }
     };
     
@@ -511,8 +551,11 @@ class SVGManager {
   highlightSelectedElement(elementId) {
     if (!this.svgElement) return false;
     
+    console.log('Highlighting element:', elementId);
+    
     // Remover destaque anterior
     if (this.selectedElement) {
+      console.log('Removing previous highlight from:', this.selectedElement.id);
       this.selectedElement.classList.remove('selected-highlight');
     }
     
@@ -520,8 +563,12 @@ class SVGManager {
     if (elementId) {
       const element = this.svgElement.getElementById(elementId);
       if (element) {
+        console.log('Adding highlight to:', elementId);
         element.classList.add('selected-highlight');
         this.selectedElement = element;
+      } else {
+        console.error('Element not found for highlighting:', elementId);
+        this.selectedElement = null;
       }
     } else {
       this.selectedElement = null;

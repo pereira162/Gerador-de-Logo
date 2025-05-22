@@ -70,14 +70,23 @@ const useLogoStore = create((set, get) => ({
   },
 
   selectElement: (elementId) => {
+    console.log('LogoStore: Selecting element', elementId);
     svgManager.highlightSelectedElement(elementId); // SVGManager cuida do visual
+    
     if (elementId) {
-      const styles = svgManager.getElementStyle(elementId); // Lê do DOM SVG via SVGManager
-      const transforms = svgManager.getElementTransform(elementId); // Lê do DOM SVG via SVGManager
+      // Lê os estilos e transformações atuais do elemento SVG
+      const styles = svgManager.getElementStyle(elementId);
+      const transforms = svgManager.getElementTransform(elementId);
+      
+      console.log('Element styles:', styles);
+      console.log('Element transforms:', transforms);
       
       const { currentProject } = get();
       const updatedTransformations = new Map(currentProject.transformations);
-      updatedTransformations.set(elementId, transforms || { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+      
+      // Garantir que temos um objeto de transformação válido
+      const validTransforms = transforms || { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotation: 0 };
+      updatedTransformations.set(elementId, validTransforms);
 
       set(state => ({
         currentProject: {
@@ -88,11 +97,13 @@ const useLogoStore = create((set, get) => ({
         }
       }));
     } else {
+      // Quando nenhum elemento é selecionado
       set(state => ({
         currentProject: {
           ...state.currentProject,
           selectedElementId: null,
           currentElementStyles: {},
+          // Mantemos as transformações no Map para uso futuro
         }
       }));
     }

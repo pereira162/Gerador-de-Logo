@@ -1,240 +1,252 @@
-# Geometric Logo Platform System Design
+# Geometric Logo Platform - System Design Document
 
-## Implementation approach
+## 1. Implementation Approach
 
-After analyzing the requirements and reference documents, we will implement a self-contained, client-side web application for creating and customizing geometric logos. The platform will focus on providing an intuitive user interface with powerful editing capabilities while ensuring all functionality operates entirely within the user's browser without external dependencies.
+### 1.1 Overview
+The Geometric Logo Platform is a web-based application that allows users to select SVG templates, customize elements (colors, transformations), add text, and export the final logo. The application is entirely client-side ('self-contained') built with React, Zustand for state management, and Tailwind CSS for styling.
 
-### Key Architectural Decisions
+### 1.2 Technology Stack
+- **Frontend Framework**: React.js
+- **State Management**: Zustand
+- **Styling**: Tailwind CSS
+- **SVG Manipulation**: Custom SVGManager service
+- **Bundling**: Vite
 
-1. **Client-Side Only Architecture**: All functionality will operate entirely within the browser, with no backend dependencies for core features.
+### 1.3 Key Challenges and Solutions
 
-2. **React Component Architecture**: Structured using container and presentational components with clear separation of concerns.
+#### 1.3.1 SVG Element Selection and Editing
+The platform needs to allow users to interact with SVG elements for editing. This involves:
+- Identifying clickable elements with proper class markers (`editable`, `primary-color-element`, `secondary-color-element`, etc.)
+- Providing visual feedback when hovering/selecting elements
+- Recording selected elements in the application state
+- Displaying appropriate editing controls based on the selected element type
 
-3. **SVG Manipulation**: Direct SVG DOM manipulation with SVG.js library to handle transformations, styling, and complex operations.
+#### 1.3.2 Properties Panel Implementation
+The properties panel must dynamically update based on the selected element, showing:
+- For shape elements: color pickers, transformation controls, opacity slider
+- For text elements: font family selector, font size, alignment, color picker, bold/italic toggles
 
-4. **State Management**: Using Zustand for centralized, efficient state management with a clear action-based pattern.
+#### 1.3.3 Real-time Preview
+All edits must be immediately reflected in the editor canvas, requiring a robust two-way binding between:
+- The properties panel controls
+- The application state (via Zustand)
+- The actual SVG DOM manipulation (via SVGManager)
 
-5. **Typography System**: Built-in font management with client-side text rendering and positioning in SVG.
+## 2. Data Structures and Interfaces
 
-6. **Export System**: Client-side conversion of SVG to PNG using Canvas API with proper font handling.
+### 2.1 Core Data Models
 
-### Technology Stack
-
-- **Framework**: React (latest stable version)
-- **Language**: JavaScript (ES6+)
-- **Styling**: Tailwind CSS for utility-first styling approach
-- **SVG Manipulation**: SVG.js library for vector graphics manipulation
-- **State Management**: Zustand for lightweight yet powerful state management
-- **Build System**: Vite for fast development and optimized production builds
-- **Export Functionality**: Canvas API for SVG-to-PNG conversion
-- **Additional Libraries**:
-  - saveSvgAsPng for PNG export optimization
-  - JSZip for packaging export variants (P1 feature)
-
-### Module Structure
-
-The application will be organized into the following modules:
-
-1. **Core UI Layer**: Screen components and navigation logic
-2. **Editing Canvas**: SVG workspace and manipulation tools
-3. **Properties & Tools Panel**: Contextual editing controls
-4. **SVG Management**: Logo manipulation and transformation logic
-5. **Typography Engine**: Text placement and styling functionality
-6. **Color Management**: Color selection, palettes, and application logic
-7. **Preview System**: Real-time preview and mockup generation
-8. **Export System**: SVG and PNG generation and download logic
-9. **Variant Generation**: Logic to create logo variations (P1)
-10. **State Management**: Central store and action creators
-
-## Data structures and interfaces
-
-The main data structures and interfaces for the application are detailed in the class diagram (`Geometric_Logo_Platform_class_diagram.mermaid`). Key data structures include:
-
-### Logo Project State
-
-Represents the complete state of a logo being edited:
+#### Project
+Represents a complete logo project with all its elements and configurations.
 
 ```typescript
-interface LogoProjectState {
-  id: string;                  // Unique identifier for the project
-  selectedLogoId: string;      // ID of the selected base logo template
-  svgContent: string;          // Current SVG content as string
-  elements: Map<string, LogoElement>; // Map of all editable elements by ID
-  selectedElementId: string | null;   // Currently selected element ID
-  textElements: TextElement[]; // Array of text elements (company name, tagline)
-  colorPalette: ColorPalette;  // Current color palette
-  history: HistoryState[];     // For undo/redo (P1)
-  variants: Record<string, string>; // Generated variants (P1)
+interface Project {
+  id: string;
+  name: string;
+  svgContent: string;  // Current SVG content as string
+  templateId: string;  // ID of the base template
+  elements: {[elementId: string]: ElementProperties};
+  textElements: TextElement[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
-### Logo Element
-
-Represents a single editable element in the SVG:
+#### ElementProperties
+Stores properties for each SVG element in the logo.
 
 ```typescript
-interface LogoElement {
-  id: string;          // Element ID
-  type: string;        // Element type (path, circle, rect, etc.)
-  fill: string;        // Fill color
-  stroke: string;      // Stroke color
-  strokeWidth: number; // Stroke width
-  opacity: number;     // Opacity
-  transform: Transform; // Current transformation
-  original: {         // Original values for reset
-    fill: string;
-    stroke: string;
-    strokeWidth: number;
-    transform: Transform;
-  }
+interface ElementProperties {
+  id: string;
+  type: 'path' | 'circle' | 'rect' | 'ellipse' | 'polygon' | 'polyline' | 'g';
+  fill: string | null;
+  stroke: string | null;
+  strokeWidth: number | null;
+  opacity: number;
+  transform: {
+    translate: {x: number, y: number},
+    scale: {x: number, y: number},
+    rotate: number,
+  };
+  originalAttributes: Object;  // Original SVG attributes
 }
 ```
 
-### Text Element
-
-Represents text added to the logo:
+#### TextElement
+Represents text elements added to the logo.
 
 ```typescript
 interface TextElement {
-  id: string;          // Element ID
-  content: string;     // Text content
-  fontFamily: string;  // Font family
-  fontSize: number;    // Font size in pixels
-  fontWeight: string;  // Font weight
-  fill: string;        // Text color
-  position: Position;  // Position relative to logo
-  alignment: string;   // Text alignment
-  letterSpacing: number; // Letter spacing
-  type: 'companyName' | 'tagline'; // Text type
+  id: string;
+  content: string;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  fontStyle: string;
+  textAlignment: 'start' | 'middle' | 'end';
+  fill: string;
+  position: {x: number, y: number};
+  transform: {
+    translate: {x: number, y: number},
+    scale: {x: number, y: number},
+    rotate: number,
+  };
 }
 ```
 
-### Transform
+### 2.2 State Management
 
-Represents geometric transformations:
+The application uses Zustand for state management with the following main stores:
+
+#### LogoStore
+Central store managing the logo editing state.
 
 ```typescript
-interface Transform {
-  translate: { x: number; y: number };
-  rotate: number;
-  scale: { x: number; y: number };
-  origin: { x: number; y: number };
+interface LogoState {
+  // Project data
+  currentProject: Project | null;
+  availableTemplates: Template[];
+  isLoading: boolean;
+  error: string | null;
+  
+  // Selection state
+  selectedElementId: string | null;
+  selectedTextElementId: string | null;
+  currentElementStyles: Partial<ElementProperties> | null;
+  
+  // Actions
+  createNewProject: (templateId: string) => void;
+  loadProject: (projectId: string) => void;
+  saveProject: () => void;
+  
+  // Element selection
+  selectElement: (elementId: string) => void;
+  selectTextElement: (textElementId: string) => void;
+  clearSelection: () => void;
+  
+  // Element modification
+  updateElementStyle: (elementId: string, styles: Partial<ElementProperties>) => void;
+  updateElementTransform: (elementId: string, transform: Partial<Transform>) => void;
+  updateTextElement: (textElementId: string, props: Partial<TextElement>) => void;
+  
+  // Text operations
+  addTextElement: (initialProps?: Partial<TextElement>) => void;
+  removeTextElement: (textElementId: string) => void;
+  
+  // Export operations
+  exportAsSVG: () => string;
+  exportAsPNG: () => Promise<string>;
+  exportAsJPG: () => Promise<string>;
 }
 ```
 
-### Color Palette
-
-Represents a color scheme:
+#### UIStore
+Manages UI-related state like active screens, modals, etc.
 
 ```typescript
-interface ColorPalette {
-  id: string;       // Palette ID
-  name: string;     // Palette name
-  primary: string;  // Primary color
-  secondary: string; // Secondary color
-  accent: string;    // Accent color
-  isCustom: boolean; // Whether it's a custom or preset palette
+interface UIState {
+  activeScreen: 'welcome' | 'templates' | 'editor' | 'typography' | 'export';
+  isPropertiesPanelOpen: boolean;
+  activeTab: 'shape' | 'text' | 'export';
+  isTemplateModalOpen: boolean;
+  isSaveModalOpen: boolean;
+  
+  // Actions
+  setActiveScreen: (screen: UIState['activeScreen']) => void;
+  setActiveTab: (tab: UIState['activeTab']) => void;
+  togglePropertiesPanel: () => void;
+  openTemplateModal: () => void;
+  closeTemplateModal: () => void;
+  openSaveModal: () => void;
+  closeSaveModal: () => void;
 }
 ```
 
-## Key Services and Managers
+## 3. Key Components and Services
 
-The application will use several service classes to encapsulate core functionality:
+### 3.1 Core Services
 
-### SVGManager
+#### SVGManager
+Handles all DOM manipulation of SVG elements.
 
-Handles all SVG manipulation operations:
+```typescript
+class SVGManager {
+  // Initialization
+  initialize(svgContent: string, containerId: string): void;
+  cleanup(): void;
+  
+  // Selection management
+  setElementSelectCallback(callback: (elementId: string) => void): void;
+  highlightElement(elementId: string): void;
+  clearHighlight(): void;
+  
+  // Element properties
+  getElementStyle(elementId: string): Partial<ElementProperties>;
+  setElementStyle(elementId: string, styles: Partial<ElementProperties>): void;
+  getElementTransform(elementId: string): Transform;
+  setElementTransform(elementId: string, transform: Partial<Transform>): void;
+  
+  // Text management
+  addTextElement(textElement: TextElement): void;
+  updateTextElement(textElementId: string, props: Partial<TextElement>): void;
+  removeTextElement(textElementId: string): void;
+  
+  // Export
+  getSVGContent(): string;
+  rasterize(format: 'png' | 'jpg', scale?: number): Promise<string>;
+}
+```
 
-- Loading SVG templates
-- Parsing and selecting elements
-- Applying transformations
-- Applying styles
-- Adding text elements
-- Exporting to string format
+### 3.2 Main Components
 
-### FontManager
+#### App Structure
+- **AppRouter**: Manages navigation between main screens
+- **MainLayout**: Common layout wrapping all screens
 
-Manages font loading and application:
+#### Editor Screen Components
+- **EditorScreen**: Main container for the editor
+- **EditingCanvas**: SVG display and interaction area
+- **PropertiesPanel**: Dynamic panel displaying controls for selected elements
+  - **ShapeProperties**: Controls specific to shapes (color, opacity, etc)
+  - **TextProperties**: Controls specific to text elements
+- **ToolsSidebar**: Tools and operations (undo/redo, alignment, etc)
 
-- Preloading bundled fonts
-- Font loading status tracking
-- Font application to text elements
+#### PropertiesPanel Components
+- **ColorPicker**: Custom color selection control
+- **TransformationControls**: Interface for scale, rotation, translation
+- **OpacitySlider**: Slider for adjusting element opacity
+- **ResetButton**: Button to reset element to original properties
+- **TextFormatControls**: Text-specific formatting tools
 
-### ExportManager
+## 4. Key Implementation Requirements
 
-Manages the export process:
+### 4.1 SVG Element Selection and Editing
+1. All SVG templates must have `.editable` class on elements that should be selectable
+2. Color-editable elements should have additional classes: `.primary-color-element`, `.secondary-color-element`, etc.
+3. The SVGManager must attach click handlers to all elements with the `.editable` class
+4. When an element is selected:
+   - Its ID must be stored in LogoStore.selectedElementId
+   - Its current styles must be extracted and stored in LogoStore.currentElementStyles
+   - The PropertiesPanel must update to show the relevant controls
+   - Visual indication should appear (highlight, handles, etc.)
 
-- SVG to string conversion
-- SVG to PNG conversion
-- Variant generation
-- Download packaging
+### 4.2 Properties Panel Implementation
+1. The panel must dynamically render different controls based on selected element type
+2. Controls must be two-way bound to the store state
+3. Changes must be immediately applied to the SVG
+4. Each property section should include a reset button to restore defaults
 
-### ColorManager
+### 4.3 Text Element Handling
+1. Text elements are represented differently from SVG elements
+2. Adding text creates a new SVG text element in the DOM
+3. Text-specific properties (font, alignment, etc.) require dedicated controls
 
-Handles color operations:
+## 5. Anything UNCLEAR
 
-- Color conversion (HEX, RGB)
-- Palette application
-- Global color scheme changes
+1. **User Permissions**: The current design doesn't address user authentication or project storage persistence. It's assumed projects are stored locally.
 
-## Program call flow
+2. **Template Management**: The system for adding/importing new templates needs further specification.
 
-The main call flows for the application are detailed in the sequence diagram (`Geometric_Logo_Platform_sequence_diagram.mermaid`), which shows the interactions between components for key user scenarios:
+3. **Advanced Features**: Features like layers management, grouping/ungrouping elements, and keyboard shortcuts need further implementation details.
 
-1. Logo selection flow
-2. Element editing flow
-3. Color customization flow
-4. Typography integration flow
-5. Export and variant generation flow
-
-## Implementation Challenges
-
-The following areas require special attention during implementation:
-
-### SVG Manipulation Performance
-
-Handling complex SVG manipulations in real-time can be performance-intensive. The implementation should:
-
-- Use efficient DOM operations
-- Implement debouncing for high-frequency operations
-- Optimize rendering cycles
-- Test with the most complex SVG icons to ensure smooth performance
-
-### Font Loading and Rendering
-
-Ensuring correct font rendering in both the editor and exported files is critical:
-
-- Preload all fonts at application startup
-- Use FontFace API to track loading status
-- Ensure fonts are loaded before export operations
-- Test text rendering in different contexts
-
-### SVG to PNG Conversion
-
-Generating high-quality PNG exports from SVG can be challenging:
-
-- Ensure SVG elements are properly rendered on canvas
-- Handle font rendering correctly during conversion
-- Support different export resolutions
-- Test export quality across different browsers
-
-### Responsive Design for Editor
-
-Making the editor usable on different devices requires careful UI design:
-
-- Adapt UI layout for different screen sizes
-- Optimize touch interactions for tablet users
-- Ensure editing handles are appropriately sized
-- Test the editing experience across devices
-
-## Anything UNCLEAR
-
-1. **Handling of Complex SVGs**: The performance limits of SVG manipulation in the browser should be tested early in the development process, especially with the most complex icons (like fractals).
-
-2. **Font Licensing**: The specific open-source fonts to be bundled with the application need to be finalized, ensuring proper licensing for redistribution.
-
-3. **Variant Generation Logic**: The exact positioning rules for generating horizontal/vertical variants may need further specification based on testing with actual logos.
-
-4. **Export Quality Parameters**: The optimal resolution settings for PNG exports should be determined through visual quality testing.
-
-5. **Storage Strategy**: Though not required for MVP, a strategy for local storage of user projects could improve user experience and should be considered for future iterations.
+4. **Performance Optimization**: For complex SVGs with many elements, optimization strategies may be needed for smooth editing experience.

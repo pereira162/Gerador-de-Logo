@@ -3,13 +3,21 @@ import useLogoStore from '../../store/LogoStore';
 import svgManager from '../../services/SVGManager';
 
 const PropertiesPanel = () => {
-  const { currentProject, updateElement } = useLogoStore(state => ({
+  const { currentProject, updateElement, updateElementTransform } = useLogoStore(state => ({
     currentProject: state.currentProject,
-    updateElement: state.updateElement
+    updateElement: state.updateElement,
+    updateElementTransform: state.updateElementTransform
   }));
   
-  const { elements, selectedElementId } = currentProject;
-  const selectedElement = selectedElementId ? elements.get(selectedElementId) : null;
+  const { elements, selectedElementId, currentElementStyles, transformations } = currentProject;
+  const selectedElementFromMap = selectedElementId ? elements.get(selectedElementId) : null;
+  const selectedElementTransform = selectedElementId ? transformations.get(selectedElementId) : null;
+  
+  // Combine element data from both sources
+  const selectedElement = selectedElementId ? {
+    ...selectedElementFromMap,
+    ...currentElementStyles,
+  } : null;
   
   // Handle style changes
   const handleStyleChange = (property, value) => {
@@ -20,31 +28,27 @@ const PropertiesPanel = () => {
   
   // Handle transformation changes
   const handleTransformChange = (property, value) => {
-    if (!selectedElementId || !selectedElement) return;
+    if (!selectedElementId) return;
     
-    const currentTransform = selectedElement.transform || {
-      translate: { x: 0, y: 0 },
-      rotate: 0,
-      scale: { x: 1, y: 1 },
-      origin: { x: 0, y: 0 }
+    const currentTransform = selectedElementTransform || {
+      translateX: 0, translateY: 0, rotation: 0, scaleX: 1, scaleY: 1
     };
     
-    let newTransform = { ...currentTransform };
-    
     // Update the appropriate transform property
+    const transformUpdate = {};
     if (property === 'translateX') {
-      newTransform.translate = { ...newTransform.translate, x: Number(value) };
+      transformUpdate.translateX = Number(value);
     } else if (property === 'translateY') {
-      newTransform.translate = { ...newTransform.translate, y: Number(value) };
-    } else if (property === 'rotate') {
-      newTransform.rotate = Number(value);
+      transformUpdate.translateY = Number(value);
+    } else if (property === 'rotation') {
+      transformUpdate.rotation = Number(value);
     } else if (property === 'scaleX') {
-      newTransform.scale = { ...newTransform.scale, x: Number(value) };
+      transformUpdate.scaleX = Number(value);
     } else if (property === 'scaleY') {
-      newTransform.scale = { ...newTransform.scale, y: Number(value) };
+      transformUpdate.scaleY = Number(value);
     }
     
-    updateElement(selectedElementId, { transform: newTransform });
+    updateElementTransform(selectedElementId, transformUpdate);
   };
   
   if (!selectedElement) {
@@ -156,7 +160,7 @@ const PropertiesPanel = () => {
             <label className="block text-xs font-medium text-gray-700 mb-1">X Position</label>
             <input 
               type="number"
-              value={selectedElement.transform?.translate?.x || 0} 
+              value={selectedElementTransform?.translateX || 0} 
               onChange={(e) => handleTransformChange('translateX', e.target.value)}
               className="w-full border rounded p-1 text-sm"
             />
@@ -165,7 +169,7 @@ const PropertiesPanel = () => {
             <label className="block text-xs font-medium text-gray-700 mb-1">Y Position</label>
             <input 
               type="number"
-              value={selectedElement.transform?.translate?.y || 0} 
+              value={selectedElementTransform?.translateY || 0} 
               onChange={(e) => handleTransformChange('translateY', e.target.value)}
               className="w-full border rounded p-1 text-sm"
             />
@@ -179,11 +183,11 @@ const PropertiesPanel = () => {
             min="0" 
             max="360" 
             step="1"
-            value={selectedElement.transform?.rotate || 0} 
-            onChange={(e) => handleTransformChange('rotate', e.target.value)}
+            value={selectedElementTransform?.rotation || 0} 
+            onChange={(e) => handleTransformChange('rotation', e.target.value)}
             className="w-full"
           />
-          <div className="text-xs text-gray-500 mt-1">{selectedElement.transform?.rotate || 0}°</div>
+          <div className="text-xs text-gray-500 mt-1">{selectedElementTransform?.rotation || 0}°</div>
         </div>
         
         <div className="grid grid-cols-2 gap-3">
@@ -194,11 +198,11 @@ const PropertiesPanel = () => {
               min="0.1" 
               max="2" 
               step="0.05"
-              value={selectedElement.transform?.scale?.x || 1} 
+              value={selectedElementTransform?.scaleX || 1} 
               onChange={(e) => handleTransformChange('scaleX', e.target.value)}
               className="w-full"
             />
-            <div className="text-xs text-gray-500 mt-1">{selectedElement.transform?.scale?.x || 1}x</div>
+            <div className="text-xs text-gray-500 mt-1">{selectedElementTransform?.scaleX || 1}x</div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Scale Y</label>
@@ -207,11 +211,11 @@ const PropertiesPanel = () => {
               min="0.1" 
               max="2" 
               step="0.05"
-              value={selectedElement.transform?.scale?.y || 1} 
+              value={selectedElementTransform?.scaleY || 1} 
               onChange={(e) => handleTransformChange('scaleY', e.target.value)}
               className="w-full"
             />
-            <div className="text-xs text-gray-500 mt-1">{selectedElement.transform?.scale?.y || 1}x</div>
+            <div className="text-xs text-gray-500 mt-1">{selectedElementTransform?.scaleY || 1}x</div>
           </div>
         </div>
       </div>
@@ -220,18 +224,21 @@ const PropertiesPanel = () => {
         <button 
           className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded w-full"
           onClick={() => {
-            // Reset transformation
+            // Reset styles
             updateElement(selectedElementId, {
-              fill: selectedElement.original.fill,
-              stroke: selectedElement.original.stroke,
-              strokeWidth: selectedElement.original.strokeWidth,
-              opacity: 1,
-              transform: {
-                translate: { x: 0, y: 0 },
-                rotate: 0,
-                scale: { x: 1, y: 1 },
-                origin: { x: 0, y: 0 }
-              }
+              fill: selectedElement.original?.fill || selectedElement.fill,
+              stroke: selectedElement.original?.stroke || selectedElement.stroke,
+              strokeWidth: selectedElement.original?.strokeWidth || selectedElement.strokeWidth,
+              opacity: 1
+            });
+            
+            // Reset transformations
+            updateElementTransform(selectedElementId, {
+              translateX: 0,
+              translateY: 0,
+              rotation: 0,
+              scaleX: 1,
+              scaleY: 1
             });
           }}
         >

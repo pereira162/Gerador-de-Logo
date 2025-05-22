@@ -29,3 +29,10 @@
   outline: 2px dashed #2563eb; /* Blue outline */
   outline-offset: 2px;
 }
+
+.hover-highlight {
+  stroke: #2563eb80;
+  stroke-width: 1;
+  opacity: 0.9;
+  cursor: pointer;
+}

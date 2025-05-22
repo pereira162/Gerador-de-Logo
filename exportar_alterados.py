@@ -1,7 +1,7 @@
 import subprocess
 from datetime import datetime
 
-IGNORAR = {"exportar_alterados.py"}
+IGNORAR = {"exportar_alterados.py","/workspaces/Gerador-de-Logo/ARQUIVOS","atualizar_repositorio.py"}
 
 # Obter data/hora atual
 agora = datetime.now()
